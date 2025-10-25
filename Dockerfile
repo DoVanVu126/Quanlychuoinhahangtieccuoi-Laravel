@@ -5,9 +5,12 @@ RUN apt-get update && apt-get install -y \
     libpng-dev libjpeg-dev libfreetype6-dev zip unzip git curl \
     && docker-php-ext-install pdo pdo_mysql mysqli gd
 
-# Cài Redis
-# RUN pecl install redis \
-#     && docker-php-ext-enable redis
+# Cài đặt Xdebug
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug
+
+# Thêm file cấu hình Xdebug
+COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 
 # Cài Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
