@@ -1,8 +1,8 @@
 <?php
 return [
-    'paths' => ['*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['http://localhost:8080'],
+    'allowed_origins' => ['http://localhost:8080'], // ❗ CHỈ GIỮ 1 ORIGIN
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
     'exposed_headers' => [],
