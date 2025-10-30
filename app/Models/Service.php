@@ -9,8 +9,10 @@ class Service extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'service_id'; // vì khóa chính của bạn là service_id
-    public $timestamps = false; // nếu bạn chỉ dùng created_at
+    protected $table = 'services';              // Tên bảng
+    protected $primaryKey = 'service_id';       // Khóa chính thật sự
+    public $incrementing = true;                // Nếu AUTO_INCREMENT
+    public $timestamps = false;                 // Nếu không dùng created_at / updated_at
 
     protected $fillable = [
         'restaurant_id',
@@ -22,7 +24,7 @@ class Service extends Model
         'created_at',
     ];
 
-    // Liên kết với Restaurant (nếu muốn)
+    // Liên kết với Restaurant
     public function restaurant()
     {
         return $this->belongsTo(Restaurant::class, 'restaurant_id', 'restaurant_id');
