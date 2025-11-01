@@ -13,24 +13,21 @@ class RestaurantsSeeder extends Seeder
      */
     public function run(): void
     {
-        $faker = Faker::create();
+        $faker = Faker::create('vi_VN'); // Dữ liệu tiếng Việt
 
-        // Tạo 5 nhà hàng giả
-        for ($i = 1; $i <= 5; $i++) {
+        for ($i = 1; $i <= 100; $i++) {
             DB::table('restaurants')->insert([
-                'name' => $faker->company(),
-                'description' => $faker->sentence(),
-                'street' => $faker->streetAddress(),
-                'ward' => $faker->citySuffix(),
-                'district' => $faker->city(),
-                'city' => $faker->state(),
-                'phone' => $faker->phoneNumber(),
-                'email' => $faker->unique()->companyEmail(),
-                'capacity' => rand(20, 100),
-                'price_table' => $faker->randomFloat(2, 50, 500),
+                'name' => $faker->company,
+                'description' => $faker->paragraph(3),
+                'ward' => 'Phường ' . $faker->numberBetween(1, 15),
+                'city' => 'TP. ' . $faker->city,
+                'phone' => '0' . $faker->numberBetween(900000000, 999999999),
+                'email' => $faker->unique()->safeEmail,
+                'capacity' => $faker->numberBetween(50, 500),
+                'price_table' => $faker->randomFloat(2, 1000000, 20000000),
                 'star_rating' => $faker->randomFloat(1, 0, 5),
-                'review_count' => rand(0, 100),
-                'image_url' => $faker->imageUrl(400, 300, 'restaurant', true),
+                'review_count' => $faker->numberBetween(0, 500),
+                'image_url' => $faker->imageUrl(640, 480, 'restaurant', true, 'Nhà hàng'),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

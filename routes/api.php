@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\Api\RestaurantController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -30,3 +31,7 @@ Route::get('/services/{id}', [ServiceController::class, 'show']);
 Route::post('/services', [ServiceController::class, 'store']);
 Route::put('/services/{id}', [ServiceController::class, 'update']);
 Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
+
+
+
+Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
