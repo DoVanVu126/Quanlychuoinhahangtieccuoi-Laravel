@@ -4,7 +4,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\Api\RestaurantController;
 use App\Http\Controllers\FoodController;
 use App\Http\Controllers\RestaurantController;
 /*

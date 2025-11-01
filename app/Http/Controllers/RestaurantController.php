@@ -94,4 +94,12 @@ class RestaurantController extends Controller
         $restaurant->delete();
         return response()->json(['message' => 'Xóa nhà hàng thành công']);
     }
+    public function topRestaurants()
+    {
+        $restaurants = Restaurant::orderBy('star_rating', 'desc')
+            ->take(10)
+            ->get();
+
+        return response()->json($restaurants);
+    }
 }
