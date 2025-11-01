@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id('review_id');
             $table->unsignedBigInteger('restaurant_id');
             $table->unsignedBigInteger('user_id');
-            $table->integer('star_rating'); // Sẽ thêm CHECK sau
+            $table->integer('star_rating')->check('star_rating BETWEEN 1 AND 5'); // ✅ thêm CHECK tại đây
             $table->string('comment', 255)->nullable();
             $table->timestamp('created_at')->useCurrent();
 
@@ -24,9 +24,6 @@ return new class extends Migration
             $table->foreign('restaurant_id')->references('restaurant_id')->on('restaurants')->onDelete('cascade');
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
         });
-
-        // Thêm ràng buộc CHECK cho star_rating (1–5)
-        DB::statement('ALTER TABLE reviews ADD CONSTRAINT chk_star_rating CHECK (star_rating BETWEEN 1 AND 5)');
     }
 
     /**
