@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   # PHP + Laravel
@@ -31,8 +30,8 @@ services:
     container_name: mysql-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ""        # root không mật khẩu
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: root       # root không mật khẩu
+
       MYSQL_DATABASE: mydb
       TZ: Asia/Ho_Chi_Minh
     ports:
@@ -57,7 +56,7 @@ services:
       PMA_HOST: mysql-db
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: ""
+      PMA_PASSWORD: root
       UPLOAD_LIMIT: 300M
     depends_on:
       mysql-db:
