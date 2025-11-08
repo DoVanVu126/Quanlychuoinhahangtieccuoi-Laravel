@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\FoodController;
@@ -41,9 +42,34 @@ Route::post('/foods', [FoodController::class, 'store']);
 Route::put('/foods/{id}', [FoodController::class, 'update']);
 Route::delete('/foods/{id}', [FoodController::class, 'destroy']);
 
+// ================== API DANH SÁCH THÀNH PHỐ ==================
+Route::get('/restaurants/city', function () {
+    $cities = DB::table('restaurants')
+        ->select('city')
+        ->distinct()
+        ->whereNotNull('city')
+        ->pluck('city');
+    return response()->json(['cities' => $cities]);
+});
+
+
+// ================== API DANH SÁCH PHƯỜNG / XÃ THEO THÀNH PHỐ ==================
+Route::get('/restaurants/ward', function (Request $request) {
+    $city = trim($request->query('city'));
+
+    $wards = DB::table('restaurants')
+        ->select('ward')
+        ->whereRaw('LOWER(city) = ?', [strtolower($city)])
+        ->whereNotNull('ward')
+        ->distinct()
+        ->pluck('ward');
+
+    return response()->json(['wards' => $wards]);
+});
 
 
 //Nhà hàng
+Route::get('/restaurants/search', [RestaurantController::class, 'search']);
 Route::get('/restaurants', [RestaurantController::class, 'index']);
 Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);
 Route::post('/restaurants', [RestaurantController::class, 'store']);
