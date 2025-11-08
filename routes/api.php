@@ -4,9 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\Api\RestaurantController;
+
 use App\Http\Controllers\FoodController;
 use App\Http\Controllers\RestaurantController;
+use App\Http\Controllers\HallController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -33,7 +34,7 @@ Route::post('/services', [ServiceController::class, 'store']);
 Route::put('/services/{id}', [ServiceController::class, 'update']);
 Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
 
-Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
+
 
 //Food
 Route::get('/foods', [FoodController::class, 'index']);
@@ -51,3 +52,9 @@ Route::post('/restaurants', [RestaurantController::class, 'store']);
 Route::put('/restaurants/{id}', [RestaurantController::class, 'update']);
 Route::delete('/restaurants/{id}', [RestaurantController::class, 'destroy']);
 
+// 🏛️ Sảnh tiệc (Hall)
+Route::get('/halls', [HallController::class, 'index']);
+Route::get('/halls/{id}', [HallController::class, 'show']);
+Route::post('/halls', [HallController::class, 'store']);
+Route::put('/halls/{id}', [HallController::class, 'update']);
+Route::delete('/halls/{id}', [HallController::class, 'destroy']);
