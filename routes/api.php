@@ -8,6 +8,8 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\FoodController;
 use App\Http\Controllers\RestaurantController;
 use App\Http\Controllers\HallController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PaymentController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -83,3 +85,22 @@ Route::get('/halls/{id}', [HallController::class, 'show']);
 Route::post('/halls', [HallController::class, 'store']);
 Route::put('/halls/{id}', [HallController::class, 'update']);
 Route::delete('/halls/{id}', [HallController::class, 'destroy']);
+
+// 📦 Kho hàng (Inventory)
+Route::get('/inventories', [InventoryController::class, 'index']);
+Route::get('/inventories/low-stock', [InventoryController::class, 'lowStock']);
+Route::get('/inventories/{id}', [InventoryController::class, 'show']);
+Route::post('/inventories', [InventoryController::class, 'store']);
+Route::put('/inventories/{id}', [InventoryController::class, 'update']);
+Route::post('/inventories/{id}/quantity', [InventoryController::class, 'updateQuantity']);
+Route::delete('/inventories/{id}', [InventoryController::class, 'destroy']);
+
+// 💰 Thanh toán (Payments)
+Route::get('/payments', [PaymentController::class, 'index']);
+Route::get('/payments/statistics', [PaymentController::class, 'statistics']);
+Route::get('/payments/{id}', [PaymentController::class, 'show']);
+Route::post('/payments', [PaymentController::class, 'store']);
+Route::put('/payments/{id}', [PaymentController::class, 'update']);
+Route::post('/payments/{id}/status', [PaymentController::class, 'updateStatus']);
+Route::post('/payments/{id}/add-payment', [PaymentController::class, 'addPayment']);
+Route::delete('/payments/{id}', [PaymentController::class, 'destroy']);
