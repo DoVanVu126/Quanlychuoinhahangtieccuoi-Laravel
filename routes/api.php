@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\FoodController;
 use App\Http\Controllers\RestaurantController;
+use App\Http\Controllers\AuthController; 
 /*
 |--------------------------------------------------------------------------
 | API Routes

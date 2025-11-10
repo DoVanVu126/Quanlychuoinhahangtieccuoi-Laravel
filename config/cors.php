@@ -2,7 +2,8 @@
 return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['http://localhost:8080'], // ❗ CHỈ GIỮ 1 ORIGIN
+    'allowed_origins' => ['http://localhost:8080',
+                          'http://localhost:8081',], // ❗ CHỈ GIỮ 1 ORIGIN
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
     'exposed_headers' => [],
