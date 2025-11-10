@@ -18,11 +18,14 @@ class Inventory extends Model
         'unit',
         'quantity',
         'reorder_level',
+        'expiry_date',
+        'status',
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:2',
-        'reorder_level' => 'decimal:2',
+        'quantity' => 'integer',
+        'reorder_level' => 'integer',
+        'expiry_date' => 'date',
     ];
 
     /**
@@ -55,5 +58,41 @@ class Inventory extends Model
     public function scopeByRestaurant($query, $restaurantId)
     {
         return $query->where('restaurant_id', $restaurantId);
+    }
+
+    /**
+     * Kiểm tra sản phẩm đã hết hạn chưa
+     */
+    public function isExpired()
+    {
+        if (!$this->expiry_date) return false;
+        return $this->expiry_date->isPast();
+    }
+
+    /**
+     * Kiểm tra sản phẩm sắp hết hạn (còn 7 ngày)
+     */
+    public function isNearExpiry()
+    {
+        if (!$this->expiry_date) return false;
+        return $this->expiry_date->isFuture() && 
+               $this->expiry_date->diffInDays(now()) <= 7;
+    }
+
+    /**
+     * Scope để lấy sản phẩm đã hết hạn
+     */
+    public function scopeExpired($query)
+    {
+        return $query->whereDate('expiry_date', '<', now());
+    }
+
+    /**
+     * Scope để lấy sản phẩm sắp hết hạn
+     */
+    public function scopeNearExpiry($query)
+    {
+        return $query->whereDate('expiry_date', '>=', now())
+                     ->whereDate('expiry_date', '<=', now()->addDays(7));
     }
 }

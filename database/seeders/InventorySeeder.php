@@ -20,57 +20,93 @@ class InventorySeeder extends Seeder
 
         // Các loại nguyên liệu phổ biến trong nhà hàng tiệc cưới
         $items = [
-            ['name' => 'Gạo tẻ', 'unit' => 'kg'],
-            ['name' => 'Gạo nếp', 'unit' => 'kg'],
-            ['name' => 'Thịt bò', 'unit' => 'kg'],
-            ['name' => 'Thịt heo', 'unit' => 'kg'],
-            ['name' => 'Gà ta', 'unit' => 'con'],
-            ['name' => 'Tôm sú', 'unit' => 'kg'],
-            ['name' => 'Cá hồi', 'unit' => 'kg'],
-            ['name' => 'Mực', 'unit' => 'kg'],
-            ['name' => 'Rau xà lách', 'unit' => 'kg'],
-            ['name' => 'Cà chua', 'unit' => 'kg'],
-            ['name' => 'Hành tây', 'unit' => 'kg'],
-            ['name' => 'Khoai tây', 'unit' => 'kg'],
-            ['name' => 'Dầu ăn', 'unit' => 'lít'],
-            ['name' => 'Nước mắm', 'unit' => 'lít'],
-            ['name' => 'Đường', 'unit' => 'kg'],
-            ['name' => 'Muối', 'unit' => 'kg'],
-            ['name' => 'Bột mì', 'unit' => 'kg'],
-            ['name' => 'Trứng gà', 'unit' => 'vỉ'],
-            ['name' => 'Sữa tươi', 'unit' => 'lít'],
-            ['name' => 'Bia Heineken', 'unit' => 'thùng'],
-            ['name' => 'Bia Saigon', 'unit' => 'thùng'],
-            ['name' => 'Rượu vang đỏ', 'unit' => 'chai'],
-            ['name' => 'Coca Cola', 'unit' => 'thùng'],
-            ['name' => 'Pepsi', 'unit' => 'thùng'],
-            ['name' => 'Nước suối', 'unit' => 'thùng'],
-            ['name' => 'Khăn giấy', 'unit' => 'gói'],
-            ['name' => 'Đĩa sứ', 'unit' => 'cái'],
-            ['name' => 'Chén sứ', 'unit' => 'cái'],
-            ['name' => 'Ly thủy tinh', 'unit' => 'cái'],
-            ['name' => 'Thìa inox', 'unit' => 'cái'],
-            ['name' => 'Dĩa inox', 'unit' => 'cái'],
-            ['name' => 'Khăn trải bàn', 'unit' => 'cái'],
-            ['name' => 'Nến trang trí', 'unit' => 'hộp'],
-            ['name' => 'Hoa tươi', 'unit' => 'bó'],
-            ['name' => 'Bánh mì', 'unit' => 'cái'],
+            ['name' => 'Gạo tẻ', 'unit' => 'kg', 'perishable' => false],
+            ['name' => 'Gạo nếp', 'unit' => 'kg', 'perishable' => false],
+            ['name' => 'Thịt bò', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Thịt heo', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Gà ta', 'unit' => 'con', 'perishable' => true],
+            ['name' => 'Tôm sú', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Cá hồi', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Mực', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Rau xà lách', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Cà chua', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Hành tây', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Khoai tây', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Dầu ăn', 'unit' => 'lít', 'perishable' => true],
+            ['name' => 'Nước mắm', 'unit' => 'lít', 'perishable' => true],
+            ['name' => 'Đường', 'unit' => 'kg', 'perishable' => false],
+            ['name' => 'Muối', 'unit' => 'kg', 'perishable' => false],
+            ['name' => 'Bột mì', 'unit' => 'kg', 'perishable' => true],
+            ['name' => 'Trứng gà', 'unit' => 'vỉ', 'perishable' => true],
+            ['name' => 'Sữa tươi', 'unit' => 'lít', 'perishable' => true],
+            ['name' => 'Bia Heineken', 'unit' => 'thùng', 'perishable' => true],
+            ['name' => 'Bia Saigon', 'unit' => 'thùng', 'perishable' => true],
+            ['name' => 'Rượu vang đỏ', 'unit' => 'chai', 'perishable' => true],
+            ['name' => 'Coca Cola', 'unit' => 'thùng', 'perishable' => true],
+            ['name' => 'Pepsi', 'unit' => 'thùng', 'perishable' => true],
+            ['name' => 'Nước suối', 'unit' => 'thùng', 'perishable' => false],
+            ['name' => 'Khăn giấy', 'unit' => 'gói', 'perishable' => false],
+            ['name' => 'Đĩa sứ', 'unit' => 'cái', 'perishable' => false],
+            ['name' => 'Chén sứ', 'unit' => 'cái', 'perishable' => false],
+            ['name' => 'Ly thủy tinh', 'unit' => 'cái', 'perishable' => false],
+            ['name' => 'Thìa inox', 'unit' => 'cái', 'perishable' => false],
+            ['name' => 'Dĩa inox', 'unit' => 'cái', 'perishable' => false],
+            ['name' => 'Khăn trải bàn', 'unit' => 'cái', 'perishable' => false],
+            ['name' => 'Nến trang trí', 'unit' => 'hộp', 'perishable' => false],
+            ['name' => 'Hoa tươi', 'unit' => 'bó', 'perishable' => true],
+            ['name' => 'Bánh mì', 'unit' => 'cái', 'perishable' => true],
         ];
 
         $inventoryData = [];
 
+        // Chỉ lấy 1 nhà hàng đầu tiên để có khoảng 35 bản ghi (tầm 2 trang)
+        $selectedRestaurant = array_slice($restaurantIds, 0, 1);
+
         // Tạo dữ liệu cho mỗi nhà hàng
-        foreach ($restaurantIds as $restaurantId) {
-            // Mỗi nhà hàng sẽ có ngẫu nhiên 15-25 loại nguyên liệu
-            $selectedItems = $faker->randomElements($items, $faker->numberBetween(15, 25));
-            
-            foreach ($selectedItems as $item) {
+        foreach ($selectedRestaurant as $restaurantId) {
+            // Mỗi nhà hàng sẽ có TẤT CẢ các loại nguyên liệu (không trùng lặp)
+            foreach ($items as $item) {
+                // Tính hạn sử dụng cho sản phẩm dễ hỏng
+                $expiryDate = null;
+                $status = 'available';
+                
+                if ($item['perishable']) {
+                    $randomDays = $faker->numberBetween(-10, 60); // Từ 10 ngày trước đến 60 ngày sau
+                    $expiryDate = now()->addDays($randomDays)->format('Y-m-d');
+                    
+                    // Xác định status
+                    if ($randomDays < 0) {
+                        $status = 'expired'; // Đã hết hạn
+                    } elseif ($randomDays <= 7) {
+                        $status = 'near_expiry'; // Sắp hết hạn (còn 7 ngày)
+                    } else {
+                        $status = 'available'; // Còn hạn tốt
+                    }
+                }
+                
+                // Tạo số lượng thực tế hơn
+                // 30% sản phẩm có số lượng thấp (cần nhập hàng)
+                // Mức đặt lại là số tròn đẹp: 10, 20, 30, 50, 100
+                $reorderLevels = [10, 20, 30, 50, 100];
+                $reorderLevel = $faker->randomElement($reorderLevels);
+                $needsReorder = $faker->boolean(30); // 30% cần nhập hàng
+                
+                if ($needsReorder) {
+                    // Số lượng thấp hơn mức đặt lại (cần nhập)
+                    $quantity = $faker->numberBetween(1, $reorderLevel - 1);
+                } else {
+                    // Số lượng an toàn
+                    $quantity = $faker->numberBetween($reorderLevel + 10, 500);
+                }
+                
                 $inventoryData[] = [
                     'restaurant_id' => $restaurantId,
                     'item_name' => $item['name'],
                     'unit' => $item['unit'],
-                    'quantity' => $faker->randomFloat(2, 10, 500),
-                    'reorder_level' => $faker->randomFloat(2, 5, 50),
+                    'quantity' => $quantity,
+                    'reorder_level' => $reorderLevel,
+                    'expiry_date' => $expiryDate,
+                    'status' => $status,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];

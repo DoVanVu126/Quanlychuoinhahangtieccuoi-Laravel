@@ -87,11 +87,16 @@ Route::put('/halls/{id}', [HallController::class, 'update']);
 Route::delete('/halls/{id}', [HallController::class, 'destroy']);
 
 // 📦 Kho hàng (Inventory)
+Route::get('/inventory', [InventoryController::class, 'index']);
 Route::get('/inventories', [InventoryController::class, 'index']);
 Route::get('/inventories/low-stock', [InventoryController::class, 'lowStock']);
+Route::get('/inventories/expired', [InventoryController::class, 'expired']);
+Route::get('/inventories/near-expiry', [InventoryController::class, 'nearExpiry']);
 Route::get('/inventories/{id}', [InventoryController::class, 'show']);
 Route::post('/inventories', [InventoryController::class, 'store']);
 Route::put('/inventories/{id}', [InventoryController::class, 'update']);
+Route::post('/inventories/{id}/quantity', [InventoryController::class, 'updateQuantity']);
+Route::delete('/inventories/{id}', [InventoryController::class, 'destroy']);
 Route::post('/inventories/{id}/quantity', [InventoryController::class, 'updateQuantity']);
 Route::delete('/inventories/{id}', [InventoryController::class, 'destroy']);
 

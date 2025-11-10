@@ -64,6 +64,8 @@ class InventoryController extends Controller
             'unit' => 'required|string|max:50',
             'quantity' => 'required|numeric|min:0',
             'reorder_level' => 'required|numeric|min:0',
+            'expiry_date' => 'nullable|date|after:today',
+            'status' => 'nullable|in:available,expired,near_expiry',
         ], [
             'restaurant_id.required' => 'Vui lòng chọn nhà hàng',
             'restaurant_id.exists' => 'Nhà hàng không tồn tại',
@@ -73,6 +75,7 @@ class InventoryController extends Controller
             'quantity.min' => 'Số lượng phải lớn hơn hoặc bằng 0',
             'reorder_level.required' => 'Vui lòng nhập mức đặt hàng lại',
             'reorder_level.min' => 'Mức đặt hàng lại phải lớn hơn hoặc bằng 0',
+            'expiry_date.after' => 'Hạn sử dụng phải sau ngày hôm nay',
         ]);
 
         if ($validator->fails()) {
@@ -271,6 +274,46 @@ class InventoryController extends Controller
             'success' => true,
             'message' => $request->type === 'import' ? 'Nhập kho thành công' : 'Xuất kho thành công',
             'data' => $inventory
+        ]);
+    }
+
+    /**
+     * Lấy danh sách sản phẩm đã hết hạn
+     */
+    public function expired(Request $request)
+    {
+        $query = Inventory::with('restaurant')->expired();
+
+        if ($request->has('restaurant_id')) {
+            $query->byRestaurant($request->restaurant_id);
+        }
+
+        $inventories = $query->orderBy('expiry_date', 'asc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $inventories,
+            'count' => $inventories->count()
+        ]);
+    }
+
+    /**
+     * Lấy danh sách sản phẩm sắp hết hạn
+     */
+    public function nearExpiry(Request $request)
+    {
+        $query = Inventory::with('restaurant')->nearExpiry();
+
+        if ($request->has('restaurant_id')) {
+            $query->byRestaurant($request->restaurant_id);
+        }
+
+        $inventories = $query->orderBy('expiry_date', 'asc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $inventories,
+            'count' => $inventories->count()
         ]);
     }
 }
