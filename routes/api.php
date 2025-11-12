@@ -29,6 +29,7 @@ Route::delete('/users/{id}', [UserController::class, 'destroy']);
 // Xác thực người dùng 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forget-password', [AuthController::class, 'forgetpassword']);
 
 // danh sách dịch vụ
 Route::get('/services', [ServiceController::class, 'index']);
