@@ -17,6 +17,9 @@ return new class extends Migration
             $table->string('password_hash', 255);
             $table->string('email', 255)->unique();
             $table->string('image_url', 255)->nullable();
+            $table->string('full_name', 100)->nullable();
+            $table->string('phone', 20)->unique(); 
+            $table->string('address', 255)->nullable();
             $table->enum('role', ['admin','staff','customer']);
             $table->timestamp('created_at')->useCurrent();
         });

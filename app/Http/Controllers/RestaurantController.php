@@ -20,7 +20,9 @@ class RestaurantController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:150',
             'description' => 'nullable|string',
+            'street' => 'nullable|string|max:255',
             'ward' => 'nullable|string|max:100',
+            'district' => 'nullable|string|max:100',
             'city' => 'nullable|string|max:100',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
@@ -60,7 +62,9 @@ class RestaurantController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:150',
             'description' => 'nullable|string',
+            'street' => 'nullable|string|max:255',
             'ward' => 'nullable|string|max:100',
+            'district' => 'nullable|string|max:100',
             'city' => 'nullable|string|max:100',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
@@ -90,8 +94,6 @@ class RestaurantController extends Controller
         $restaurant->delete();
         return response()->json(['message' => 'Xóa nhà hàng thành công']);
     }
-
-    // 🔹 Top nhà hàng theo sao
     public function topRestaurants()
     {
         $restaurants = Restaurant::orderBy('star_rating', 'desc')
@@ -100,33 +102,4 @@ class RestaurantController extends Controller
 
         return response()->json($restaurants);
     }
-
-    // 🔹 Tìm kiếm nhà hàng theo tên hoặc địa chỉ (ward, city)
-public function search(Request $request)
-{
-    $keyword = trim($request->query('keyword', ''));
-
-    if ($keyword === '') {
-        return response()->json(Restaurant::orderBy('star_rating', 'desc')->get());
-    }
-
-    // Tách chuỗi thành các từ nhỏ: "Phường 6 Hà Nội" => ["Phường", "6", "Hà", "Nội"]
-    $keywords = preg_split('/\s+/', $keyword);
-
-    $restaurants = Restaurant::query();
-
-    // Tìm theo từng từ
-    $restaurants->where(function ($query) use ($keywords) {
-        foreach ($keywords as $word) {
-            $query->orWhere('name', 'like', "%{$word}%")
-                  ->orWhere('ward', 'like', "%{$word}%")
-                  ->orWhere('city', 'like', "%{$word}%");
-        }
-    });
-
-    $restaurants = $restaurants->orderBy('star_rating', 'desc')->get();
-
-    return response()->json($restaurants);
-}
-
 }
