@@ -7,6 +7,9 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\FoodController;
 use App\Http\Controllers\RestaurantController;
 use App\Http\Controllers\AuthController; 
+use App\Http\Controllers\Api\PasswordResetController;
+
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -17,6 +20,11 @@ use App\Http\Controllers\AuthController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+Route::prefix('password-reset')->group(function () {
+    Route::post('/send-otp', [PasswordResetController::class, 'sendOtp']);
+    Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp']);
+    Route::post('/reset', [PasswordResetController::class, 'resetPassword']);
+});
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -29,9 +37,12 @@ Route::delete('/users/{id}', [UserController::class, 'destroy']);
 // Xác thực người dùng 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forget-password', [AuthController::class, 'forgetpassword']);
-
+// API 1: Gửi mã OTP đến email
+//Route::post('/send-otp', [AuthController::class, 'sendPasswordOtp']);
+// API 2: Đặt lại mật khẩu bằng OTP
+//Route::post('/reset-password-with-otp', [AuthController::class, 'resetPasswordWithOtp']);
 // danh sách dịch vụ
+
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{id}', [ServiceController::class, 'show']);
 Route::post('/services', [ServiceController::class, 'store']);

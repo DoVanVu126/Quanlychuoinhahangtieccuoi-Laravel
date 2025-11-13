@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Hash; // Cho mã hóa mật khẩu
 use Illuminate\Support\Facades\Validator; // Cho kiểm tra dữ liệu
 use Illuminate\Support\Facades\Log; // Để ghi log lỗi
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Password;
+use App\Models\PasswordResetOtp; // <-- Model mới
+use Illuminate\Support\Facades\Mail; // <-- Dùng để gửi mail
+use App\Mail\SendOtpMail;           // <-- Lát nữa chúng ta sẽ tạo
+use Carbon\Carbon; 
 
 class AuthController extends Controller
 {
