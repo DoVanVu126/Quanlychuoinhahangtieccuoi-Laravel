@@ -10,6 +10,7 @@ use App\Http\Controllers\RestaurantController;
 use App\Http\Controllers\HallController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PromotionController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -105,3 +106,13 @@ Route::put('/payments/{id}', [PaymentController::class, 'update']);
 Route::post('/payments/{id}/status', [PaymentController::class, 'updateStatus']);
 Route::post('/payments/{id}/add-payment', [PaymentController::class, 'addPayment']);
 Route::delete('/payments/{id}', [PaymentController::class, 'destroy']);
+
+
+// Khuyến mãi
+Route::get('/promotions/all', [PromotionController::class, 'getAll']);   // người dùng
+Route::get('/promotions', [PromotionController::class, 'index']);
+Route::get('/promotions/{id}', [PromotionController::class, 'show']);
+Route::post('/promotions', [PromotionController::class, 'store']);
+Route::post('/promotions/{id}', [PromotionController::class, 'update']); // POST thay vì PUT để upload ảnh dễ dàng
+Route::delete('/promotions/{id}', [PromotionController::class, 'destroy']);
+
