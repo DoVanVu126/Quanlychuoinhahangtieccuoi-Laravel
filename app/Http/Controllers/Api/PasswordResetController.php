@@ -20,11 +20,19 @@ class PasswordResetController extends Controller
     public function sendOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
+            'email' => [
+                'required',
+                'email:rfc,dns',
+                'max:255',
+                'exists:users,email',
+                'regex:/^[^\<\>]*$/',
+            ],
         ], [
             'email.required' => 'Email là bắt buộc',
-            'email.email' => 'Email không hợp lệ',
+            'email.email' => 'Email không đúng định dạng',
+            'email.max' => 'Email không được vượt quá 255 ký tự',
             'email.exists' => 'Email không tồn tại trong hệ thống',
+            'email.regex' => 'Email không hợp lệ',
         ]);
 
         if ($validator->fails()) {
@@ -34,7 +42,7 @@ class PasswordResetController extends Controller
             ], 422);
         }
 
-        $email = $request->email;
+        $email = strip_tags($request->email);
         
         // Tạo mã OTP 6 số
         $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -48,7 +56,7 @@ class PasswordResetController extends Controller
         // Lưu OTP mới
         DB::table('password_reset_otps')->insert([
             'email' => $email,
-            'otp_code' => Hash::make($otpCode), // Hash OTP để bảo mật
+            'otp_code' => Hash::make($otpCode),
             'expires_at' => $expiresAt,
         ]);
 
@@ -62,10 +70,11 @@ class PasswordResetController extends Controller
                 'expires_at' => $expiresAt->toDateTimeString(),
             ], 200);
         } catch (\Exception $e) {
+            \Log::error('Send OTP Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể gửi email. Vui lòng thử lại sau.',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
@@ -76,13 +85,25 @@ class PasswordResetController extends Controller
     public function verifyOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'otp_code' => 'required|string|size:6',
+            'email' => [
+                'required',
+                'email:rfc',
+                'max:255',
+                'regex:/^[^\<\>]*$/',
+            ],
+            'otp_code' => [
+                'required',
+                'string',
+                'size:6',
+                'regex:/^[0-9]{6}$/',
+            ],
         ], [
             'email.required' => 'Email là bắt buộc',
-            'email.email' => 'Email không hợp lệ',
+            'email.email' => 'Email không đúng định dạng',
+            'email.regex' => 'Email không hợp lệ',
             'otp_code.required' => 'Mã OTP là bắt buộc',
-            'otp_code.size' => 'Mã OTP phải có 6 ký tự',
+            'otp_code.size' => 'Mã OTP phải có đúng 6 ký tự',
+            'otp_code.regex' => 'Mã OTP chỉ được chứa số',
         ]);
 
         if ($validator->fails()) {
@@ -92,8 +113,8 @@ class PasswordResetController extends Controller
             ], 422);
         }
 
-        $email = $request->email;
-        $otpCode = $request->otp_code;
+        $email = strip_tags($request->email);
+        $otpCode = strip_tags($request->otp_code);
 
         // Tìm OTP trong database
         $otpRecord = DB::table('password_reset_otps')
@@ -136,17 +157,38 @@ class PasswordResetController extends Controller
     public function resetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'otp_code' => 'required|string|size:6',
-            'password' => 'required|string|min:8|confirmed',
+            'email' => [
+                'required',
+                'email:rfc',
+                'max:255',
+                'regex:/^[^\<\>]*$/',
+            ],
+            'otp_code' => [
+                'required',
+                'string',
+                'size:6',
+                'regex:/^[0-9]{6}$/',
+            ],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'max:255',
+                'confirmed',
+                'regex:/^[^\<\>]*$/',
+            ],
         ], [
             'email.required' => 'Email là bắt buộc',
-            'email.email' => 'Email không hợp lệ',
+            'email.email' => 'Email không đúng định dạng',
+            'email.regex' => 'Email không hợp lệ',
             'otp_code.required' => 'Mã OTP là bắt buộc',
-            'otp_code.size' => 'Mã OTP phải có 6 ký tự',
+            'otp_code.size' => 'Mã OTP phải có đúng 6 ký tự',
+            'otp_code.regex' => 'Mã OTP chỉ được chứa số',
             'password.required' => 'Mật khẩu là bắt buộc',
             'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự',
+            'password.max' => 'Mật khẩu không được vượt quá 255 ký tự',
             'password.confirmed' => 'Xác nhận mật khẩu không khớp',
+            'password.regex' => 'Mật khẩu không được chứa ký tự đặc biệt < hoặc >',
         ]);
 
         if ($validator->fails()) {
@@ -156,8 +198,8 @@ class PasswordResetController extends Controller
             ], 422);
         }
 
-        $email = $request->email;
-        $otpCode = $request->otp_code;
+        $email = strip_tags($request->email);
+        $otpCode = strip_tags($request->otp_code);
 
         // Tìm OTP trong database
         $otpRecord = DB::table('password_reset_otps')
@@ -188,14 +230,24 @@ class PasswordResetController extends Controller
             ], 401);
         }
 
-        // Cập nhật mật khẩu mới
+        // Tìm user và cập nhật mật khẩu
         $user = User::where('email', $email)->first();
-        $user->update([
-                'password_hash' => Hash::make($request->password) // <-- SỬA LẠI TÊN CỘT
-        ]);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Người dùng không tồn tại',
+            ], 404);
+        }
+
+        // Cập nhật mật khẩu mới
+        $user->password_hash = Hash::make($request->password);
+        $user->save();
 
         // Xóa OTP đã sử dụng
         DB::table('password_reset_otps')->where('email', $email)->delete();
+
+        \Log::info('Password reset successful for: ' . $email);
 
         return response()->json([
             'success' => true,

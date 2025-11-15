@@ -6,133 +6,190 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Customer;
-use Illuminate\Support\Facades\DB; // Cho Transaction
-use Illuminate\Support\Facades\Hash; // Cho mã hóa mật khẩu
-use Illuminate\Support\Facades\Validator; // Cho kiểm tra dữ liệu
-use Illuminate\Support\Facades\Log; // Để ghi log lỗi
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Password;
-use App\Models\PasswordResetOtp; // <-- Model mới
-use Illuminate\Support\Facades\Mail; // <-- Dùng để gửi mail
-use App\Mail\SendOtpMail;           // <-- Lát nữa chúng ta sẽ tạo
-use Carbon\Carbon; 
 
 class AuthController extends Controller
 {
     /**
-     * Xử lý yêu cầu đăng ký tài khoản (Tạo User và Customer).
+     * Xử lý yêu cầu đăng ký tài khoản với validation đầy đủ
      */
     public function register(Request $request)
     {
-        // 1. Validate 4 trường bắt buộc
+        // 1. Validate với rules chi tiết
         $validator = Validator::make($request->all(), [
-            'username' => 'required|string|max:50|unique:users',
-            'email' => 'required|string|email|max:255|unique:users',
-            'phone' => 'required|string|max:20|unique:users',
-            'password' => 'required|string|min:8|confirmed', // 'confirmed' yêu cầu phải có 'password_confirmation'
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:50',
+                'unique:users,username',
+                'regex:/^[a-zA-Z0-9_]+$/', // Chỉ chữ, số, gạch dưới
+            ],
+            'email' => [
+                'required',
+                'string',
+                'email:rfc,dns',
+                'max:255',
+                'unique:users,email',
+            ],
+            'phone' => [
+                'required',
+                'string',
+                'regex:/^[0-9]{9,11}$/', // Chỉ số, 9-11 ký tự
+                'unique:users,phone',
+            ],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'max:255',
+                'confirmed',
+                'regex:/^[^\<\>]*$/', // Không chứa < >
+            ],
+        ], [
+            // Custom error messages
+            'username.required' => 'Tên tài khoản là bắt buộc',
+            'username.min' => 'Tên tài khoản phải có ít nhất 3 ký tự',
+            'username.max' => 'Tên tài khoản không được vượt quá 50 ký tự',
+            'username.unique' => 'Tên tài khoản đã tồn tại trong hệ thống',
+            'username.regex' => 'Tên tài khoản chỉ được chứa chữ cái, số và dấu gạch dưới',
+            
+            'email.required' => 'Email là bắt buộc',
+            'email.email' => 'Email không đúng định dạng',
+            'email.max' => 'Email không được vượt quá 255 ký tự',
+            'email.unique' => 'Email đã được đăng ký',
+            
+            'phone.required' => 'Số điện thoại là bắt buộc',
+            'phone.regex' => 'Số điện thoại chỉ được chứa số (9-11 ký tự)',
+            'phone.unique' => 'Số điện thoại đã được đăng ký',
+            
+            'password.required' => 'Mật khẩu là bắt buộc',
+            'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự',
+            'password.max' => 'Mật khẩu không được vượt quá 255 ký tự',
+            'password.confirmed' => 'Xác nhận mật khẩu không khớp',
+            'password.regex' => 'Mật khẩu không được chứa ký tự đặc biệt < hoặc >',
         ]);
 
-        // Nếu validate thất bại, trả về lỗi
+        // 2. Nếu validate thất bại, trả về lỗi
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422); // 422 Unprocessable Entity
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
         }
 
-        // Bắt đầu một Transaction
+        // 3. Sanitize input (loại bỏ HTML tags)
+        $cleanData = [
+            'username' => strip_tags($request->username),
+            'email' => strip_tags($request->email),
+            'phone' => strip_tags($request->phone),
+            'password' => $request->password,
+        ];
+
+        // 4. Bắt đầu Transaction
         DB::beginTransaction();
 
-        
-
         try {
-            // 2. TẠO BẢN GHI TRONG BẢNG 'users'
+            // 5. Tạo user
             $user = User::create([
-                'username' => $request->username,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'password_hash' => Hash::make($request->password), // Dùng đúng tên cột 'password_hash'
-                'role' => 'customer' // Tự động gán vai trò là customer
+                'username' => $cleanData['username'],
+                'email' => $cleanData['email'],
+                'phone' => $cleanData['phone'],
+                'password_hash' => Hash::make($cleanData['password']),
+                'role' => 'customer'
             ]);
 
-            // 3. TẠO BẢN GHI TRONG BẢNG 'customers'
-            // Lấy 'user_id' từ user vừa tạo ở trên
+            // 6. Tạo customer
             Customer::create([
                 'user_id' => $user->user_id 
             ]);
 
-            // 4. Nếu cả 2 đều thành công, xác nhận (commit) Transaction
+            // 7. Commit transaction
             DB::commit();
 
             return response()->json([
-                'message' => 'Đăng ký tài khoản customer thành công!',
-                'user' => $user // Trả về thông tin user (đã ẩn password_hash)
-            ], 201); // 201 Created
+                'success' => true,
+                'message' => 'Đăng ký tài khoản thành công!',
+                'user' => $user
+            ], 201);
 
         } catch (\Exception $e) {
-            // 5. Nếu có bất kỳ lỗi nào ở B2 hoặc B3, hủy bỏ (rollback) tất cả
+            // 8. Rollback nếu có lỗi
             DB::rollBack();
-
-            // Ghi lại log lỗi (quan trọng để debug)
             Log::error('Lỗi đăng ký: ' . $e->getMessage());
 
             return response()->json([
-                'message' => 'Đã có lỗi xảy ra trong quá trình đăng ký.',
-                'error' => $e->getMessage() // Chỉ hiển thị lỗi chi tiết khi đang ở môi trường dev
-            ], 500); // 500 là lỗi server
+                'success' => false,
+                'message' => 'Đã có lỗi xảy ra trong quá trình đăng ký',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
     }
 
-    //Đăng nhập
     /**
-     * Xử lý yêu cầu đăng nhập và trả về token.
-     * (Phiên bản 2: Kiểm tra thủ công, không dùng Auth::attempt)
+     * Xử lý đăng nhập với validation
      */
     public function login(Request $request)
     {
-        // 1. Validate (Giữ nguyên)
+        // 1. Validate
         $validator = Validator::make($request->all(), [
-            'login' => 'required|string',
-            'password' => 'required|string',
+            'login' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[^\<\>]*$/', // Không chứa HTML
+            ],
+            'password' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+        ], [
+            'login.required' => 'Tên tài khoản hoặc email là bắt buộc',
+            'login.regex' => 'Tên tài khoản không được chứa ký tự đặc biệt',
+            'password.required' => 'Mật khẩu là bắt buộc',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
         }
 
-        $credentials = $request->only('login', 'password');
+        // 2. Sanitize input
+        $credentials = [
+            'login' => strip_tags($request->login),
+            'password' => $request->password,
+        ];
 
-        // --- BẮT ĐẦU LOGIC MỚI ---
-
-        // 2. TÌM USER: Tìm user có 'username' HOẶC 'email' khớp với 'login'
+        // 3. Tìm user
         $user = User::where('username', $credentials['login'])
                     ->orWhere('email', $credentials['login'])
                     ->first();
 
-        // 3. KIỂM TRA MẬT KHẨU
-        //    Dùng Hash::check() để so sánh (mật_khẩu_user_nhập, mật_khẩu_đã_hash_trong_DB)
-        
-        // Nếu $user không tồn tại HOẶC Hash::check thất bại (mật khẩu sai)
+        // 4. Kiểm tra user và password
         if (!$user || !Hash::check($credentials['password'], $user->password_hash)) {
-            
-            // Trả về lỗi 422 (Unprocessable Content)
             return response()->json([
-                'errors' => ['login' => ['Tài khoản hoặc mật khẩu không chính xác.']]
+                'success' => false,
+                'message' => 'Tài khoản hoặc mật khẩu không chính xác',
+                'errors' => ['login' => ['Tài khoản hoặc mật khẩu không chính xác']]
             ], 422);
         }
 
-        // 4. ĐĂNG NHẬP THÀNH CÔNG
-        // (User đã tồn tại VÀ mật khẩu đã khớp)
-        
-        // (Tùy chọn) Đăng nhập user vào session (để các hàm Auth::user() sau này hoạt động)
+        // 5. Đăng nhập thành công
         Auth::login($user);
-
-        // Tạo token Sanctum mới
         $token = $user->createToken('api-token-cho-spa')->plainTextToken;
 
-        // 5. Trả về token và thông tin user (frontend đang mong đợi)
         return response()->json([
+            'success' => true,
+            'message' => 'Đăng nhập thành công',
             'user' => $user,
             'access_token' => $token
-        ]);
-
-        // --- KẾT THÚC LOGIC MỚI ---
+        ], 200);
     }
 }
