@@ -6,8 +6,26 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
+
 class UserController extends Controller
 {
+    public function login(Request $request)
+    {
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password_hash)) {
+            return response()->json(['message' => 'Email hoặc mật khẩu không đúng!'], 401);
+        }
+
+
+        $token = $user->createToken('authToken')->plainTextToken;
+
+        return response()->json([
+            'user' => $user,
+            'token' => $token
+        ]);
+    }
+
     // 📋 Danh sách user (có tìm kiếm + phân trang)
     public function index(Request $request)
     {
@@ -18,7 +36,7 @@ class UserController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('username', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%");
+                    ->orWhere('email', 'LIKE', "%{$search}%");
             });
         }
 

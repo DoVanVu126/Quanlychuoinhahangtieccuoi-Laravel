@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Hall;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class HallController extends Controller
 {
@@ -130,5 +131,13 @@ class HallController extends Controller
         $hall->delete();
 
         return response()->json(['message' => 'Đã xóa sảnh thành công']);
+    }
+    public function getHallsByRestaurant($restaurant_id)
+    {
+        $halls = DB::table('halls')
+            ->where('restaurant_id', $restaurant_id)
+            ->get();
+
+        return response()->json($halls);
     }
 }
