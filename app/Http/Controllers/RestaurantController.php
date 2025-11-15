@@ -102,31 +102,47 @@ class RestaurantController extends Controller
     }
 
     // 🔹 Tìm kiếm nhà hàng theo tên hoặc địa chỉ (ward, city)
-public function search(Request $request)
-{
-    $keyword = trim($request->query('keyword', ''));
+    public function search(Request $request)
+    {
+        $keyword = trim($request->query('keyword', ''));
 
-    if ($keyword === '') {
-        return response()->json(Restaurant::orderBy('star_rating', 'desc')->get());
-    }
-
-    // Tách chuỗi thành các từ nhỏ: "Phường 6 Hà Nội" => ["Phường", "6", "Hà", "Nội"]
-    $keywords = preg_split('/\s+/', $keyword);
-
-    $restaurants = Restaurant::query();
-
-    // Tìm theo từng từ
-    $restaurants->where(function ($query) use ($keywords) {
-        foreach ($keywords as $word) {
-            $query->orWhere('name', 'like', "%{$word}%")
-                  ->orWhere('ward', 'like', "%{$word}%")
-                  ->orWhere('city', 'like', "%{$word}%");
+        // ✅ Nếu không có keyword: trả về nhà hàng nổi bật
+        if ($keyword === '') {
+            return response()->json(
+                Restaurant::orderByDesc('star_rating')
+                    ->limit(50) // Giới hạn 50 kết quả cho nhẹ
+                    ->get()
+            );
         }
-    });
 
-    $restaurants = $restaurants->orderBy('star_rating', 'desc')->get();
+        // ✅ Chuẩn hóa keyword: bỏ ký tự đặc biệt, chuyển chữ thường
+        $keyword = preg_replace('/[^a-zA-Z0-9\sÀ-ỹ]/u', '', strtolower($keyword));
 
-    return response()->json($restaurants);
-}
+        // ✅ Tách các từ khóa nhỏ (ví dụ: "Phường 6 Hà Nội" → ["phường", "6", "hà", "nội"])
+        $keywords = preg_split('/\s+/', $keyword, -1, PREG_SPLIT_NO_EMPTY);
 
+        // ✅ Khởi tạo query
+        $query = Restaurant::query();
+
+        // ✅ Áp dụng tìm kiếm theo từng từ khóa
+        $query->where(function ($q) use ($keywords) {
+            foreach ($keywords as $word) {
+                $q->where(function ($sub) use ($word) {
+                    $sub->whereRaw('LOWER(name) LIKE ?', ["%{$word}%"])
+                        ->orWhereRaw('LOWER(ward) LIKE ?', ["%{$word}%"])
+                        ->orWhereRaw('LOWER(city) LIKE ?', ["%{$word}%"]);
+                });
+            }
+        });
+
+        // ✅ Sắp xếp thông minh hơn:
+        // 1. Đánh giá cao sao
+        // 2. Nhà hàng có tên chứa nguyên keyword được ưu tiên
+        $query->orderByDesc('star_rating')
+            ->orderByRaw("CASE WHEN LOWER(name) LIKE ? THEN 0 ELSE 1 END", ["%{$keyword}%"]);
+
+        $restaurants = $query->limit(100)->get(); // ✅ Giới hạn 100 kết quả
+
+        return response()->json($restaurants);
+    }
 }

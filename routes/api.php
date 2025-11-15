@@ -20,6 +20,9 @@ use App\Http\Controllers\PaymentController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+Route::post('/login', [UserController::class, 'login']);
+
+
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -79,6 +82,7 @@ Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);
 Route::post('/restaurants', [RestaurantController::class, 'store']);
 Route::put('/restaurants/{id}', [RestaurantController::class, 'update']);
 Route::delete('/restaurants/{id}', [RestaurantController::class, 'destroy']);
+Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
 
 // 🏛️ Sảnh tiệc (Hall)
 Route::get('/halls', [HallController::class, 'index']);
@@ -86,6 +90,8 @@ Route::get('/halls/{id}', [HallController::class, 'show']);
 Route::post('/halls', [HallController::class, 'store']);
 Route::put('/halls/{id}', [HallController::class, 'update']);
 Route::delete('/halls/{id}', [HallController::class, 'destroy']);
+// Lấy danh sách sảnh theo restaurant_id
+Route::get('/restaurants/{id}/halls', [HallController::class, 'getHallsByRestaurant']);
 
 // 📦 Kho hàng (Inventory)
 Route::get('/inventories', [InventoryController::class, 'index']);
