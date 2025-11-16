@@ -11,6 +11,7 @@ use App\Http\Controllers\HallController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\BookingController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -123,3 +124,5 @@ Route::post('/promotions', [PromotionController::class, 'store']);
 Route::post('/promotions/{id}', [PromotionController::class, 'update']); // POST thay vì PUT để upload ảnh dễ dàng
 Route::delete('/promotions/{id}', [PromotionController::class, 'destroy']);
 
+// Bookings
+Route::get('/bookings/user', [BookingController::class, 'BookingbyUser']);
