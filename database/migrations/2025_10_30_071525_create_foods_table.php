@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->string('name', 150);
             $table->text('description')->nullable();
             $table->string('unit', 50);
+            $table->decimal('price', 15, 2)->default(0); // ✅ Cột giá
             $table->string('image_url', 255)->nullable();
             $table->timestamps();
         });

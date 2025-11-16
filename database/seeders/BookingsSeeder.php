@@ -36,6 +36,7 @@ class BookingsSeeder extends Seeder
                     'number_of_tables' => rand(10, 50),
                     'status' => $faker->randomElement(['pending', 'confirmed', 'completed']),
                     'notes' => $faker->sentence(6),
+                    'price' => $faker->numberBetween(1000000, 50000000),
                     'created_at' => now(),
                 ]);
             }

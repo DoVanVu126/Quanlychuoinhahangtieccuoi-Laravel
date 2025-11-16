@@ -49,6 +49,7 @@ Route::get('/foods/{id}', [FoodController::class, 'show']);
 Route::post('/foods', [FoodController::class, 'store']);
 Route::put('/foods/{id}', [FoodController::class, 'update']);
 Route::delete('/foods/{id}', [FoodController::class, 'destroy']);
+Route::get('/restaurants/{id}/foods', [FoodController::class, 'getFoodsByRestaurant']);
 
 // ================== API DANH SÁCH THÀNH PHỐ ==================
 Route::get('/restaurants/city', function () {

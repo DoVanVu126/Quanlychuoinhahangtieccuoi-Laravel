@@ -24,6 +24,7 @@ return new class extends Migration
             $table->date('event_date');
             $table->date('return_date')->nullable();
             $table->integer('number_of_tables');
+            $table->decimal('price', 12, 2)->default(0); // Thêm sau number_of_tables
             $table->string('status', 20)->default('pending');
             $table->string('notes', 255)->nullable();
             $table->timestamp('created_at')->useCurrent();

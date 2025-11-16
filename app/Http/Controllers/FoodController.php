@@ -11,10 +11,10 @@ class FoodController extends Controller
     public function index()
     {
         $foods = Food::with(['restaurant', 'foodType'])
-        ->select('food_id', 'food_type_id', 'restaurant_id', 'name', 'description', 'unit', 'image_url')
-        ->paginate(10);
+            ->select('food_id', 'food_type_id', 'restaurant_id', 'name', 'description', 'unit', 'image_url')
+            ->paginate(10);
 
-    return response()->json($foods);
+        return response()->json($foods);
     }
 
     public function store(Request $request)
@@ -78,5 +78,13 @@ class FoodController extends Controller
 
         $food->delete();
         return response()->json(['message' => 'Xóa món ăn thành công']);
+    }
+    public function getFoodsByRestaurant($restaurant_id)
+    {
+        $foods = Food::with('foodType', 'restaurant')
+            ->where('restaurant_id', $restaurant_id)
+            ->get();
+
+        return response()->json($foods);
     }
 }
