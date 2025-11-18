@@ -132,4 +132,9 @@ class ServiceController extends Controller
 
         return response()->json(['message' => 'Deleted successfully']);
     }
+    public function getServicesByRestaurant($id)
+    {
+        $services = Service::where('restaurant_id', $id)->get();
+        return response()->json($services);
+    }
 }

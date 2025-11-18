@@ -41,8 +41,7 @@ Route::get('/services/{id}', [ServiceController::class, 'show']);
 Route::post('/services', [ServiceController::class, 'store']);
 Route::put('/services/{id}', [ServiceController::class, 'update']);
 Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
-
-
+Route::get('/restaurants/{id}/services', [ServiceController::class, 'getServicesByRestaurant']);
 
 //Food
 Route::get('/foods', [FoodController::class, 'index']);
@@ -76,7 +75,6 @@ Route::get('/restaurants/ward', function (Request $request) {
 
     return response()->json(['wards' => $wards]);
 });
-
 
 //Nhà hàng
 Route::get('/restaurants/search', [RestaurantController::class, 'search']);
@@ -115,7 +113,6 @@ Route::post('/payments/{id}/status', [PaymentController::class, 'updateStatus'])
 Route::post('/payments/{id}/add-payment', [PaymentController::class, 'addPayment']);
 Route::delete('/payments/{id}', [PaymentController::class, 'destroy']);
 
-
 // Khuyến mãi
 Route::get('/promotions/all', [PromotionController::class, 'getAll']);   // người dùng
 Route::get('/promotions', [PromotionController::class, 'index']);
@@ -126,3 +123,9 @@ Route::delete('/promotions/{id}', [PromotionController::class, 'destroy']);
 
 // Bookings
 Route::get('/bookings/user', [BookingController::class, 'BookingbyUser']);
+Route::get('/bookings', [BookingController::class, 'index']);
+Route::get('/bookings/{id}', [BookingController::class, 'show']);
+Route::post('/bookings', [BookingController::class, 'store'])->middleware('auth:sanctum');
+
+Route::put('/bookings/{id}', [BookingController::class, 'update']);
+Route::delete('/bookings/{id}', [BookingController::class, 'destroy']);

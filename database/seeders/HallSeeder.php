@@ -18,7 +18,7 @@ class HallSeeder extends Seeder
             return;
         }
 
-        $statuses = ['available', 'maintenance', 'unavailable'];
+        $statuses = ['maintenance', 'active'];
 
         for ($i = 1; $i <= 12; $i++) {
             DB::table('halls')->insert([
