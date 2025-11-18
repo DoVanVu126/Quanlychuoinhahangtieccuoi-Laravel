@@ -12,6 +12,7 @@ class FoodTypeSeeder extends Seeder
         $types = [
             ['Khai vị', 'Các món ăn nhẹ trước bữa chính'],
             ['Món chính', 'Các món chính trong bữa tiệc'],
+            ['Lẩu', 'Các món lẩu trong bữa tiệc'],
             ['Tráng miệng', 'Các món ngọt sau bữa ăn'],
             ['Đồ uống', 'Các loại nước uống đi kèm'],
         ];
