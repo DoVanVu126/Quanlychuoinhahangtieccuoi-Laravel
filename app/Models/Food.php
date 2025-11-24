@@ -21,6 +21,7 @@ class Food extends Model
         'description',
         'unit',
         'image_url',
+         'price',
     ];
 
     public function restaurant()

@@ -123,6 +123,8 @@ Route::get('/promotions/{id}', [PromotionController::class, 'show']);
 Route::post('/promotions', [PromotionController::class, 'store']);
 Route::post('/promotions/{id}', [PromotionController::class, 'update']); // POST thay vì PUT để upload ảnh dễ dàng
 Route::delete('/promotions/{id}', [PromotionController::class, 'destroy']);
+Route::get('/promotions/check', [PromotionController::class, 'checkCode']);
+
 
 // Bookings
 Route::get('/bookings/user', [BookingController::class, 'BookingbyUser']);
