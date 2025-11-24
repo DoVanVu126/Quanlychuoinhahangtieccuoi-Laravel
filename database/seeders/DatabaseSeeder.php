@@ -19,5 +19,9 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
         $this->call(HallSeeder::class);
+        $this->call([
+    NotificationSeeder::class,
+]);
+
     }
 }

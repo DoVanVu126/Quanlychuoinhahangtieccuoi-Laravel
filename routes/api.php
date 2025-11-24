@@ -12,6 +12,9 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\FoodTypeController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -50,6 +53,7 @@ Route::post('/foods', [FoodController::class, 'store']);
 Route::put('/foods/{id}', [FoodController::class, 'update']);
 Route::delete('/foods/{id}', [FoodController::class, 'destroy']);
 Route::get('/restaurants/{id}/foods', [FoodController::class, 'getFoodsByRestaurant']);
+Route::get('/food-types', [FoodTypeController::class, 'index']);
 
 // ================== API DANH SÁCH THÀNH PHỐ ==================
 Route::get('/restaurants/city', function () {
@@ -129,3 +133,16 @@ Route::post('/bookings', [BookingController::class, 'store'])->middleware('auth:
 
 Route::put('/bookings/{id}', [BookingController::class, 'update']);
 Route::delete('/bookings/{id}', [BookingController::class, 'destroy']);
+
+
+// Notification
+Route::get('/notifications/{userId}', [NotificationController::class, 'getNotifications']);
+Route::post('/notifications/send', [NotificationController::class, 'sendNotification']);
+Route::patch('/notifications/read/{id}', [NotificationController::class, 'markRead']);
+Route::patch('/notifications/read-all/{userId}', [NotificationController::class, 'markAllRead']);
+// Xóa 1 thông báo
+Route::delete('/notifications/{id}', [NotificationController::class, 'deleteNotif']);
+
+// Xóa tất cả thông báo của user
+Route::delete('/notifications/delete-all/{userId}', [NotificationController::class, 'deleteAll']);
+Route::post('/notifications/send-toast', [NotificationController::class, 'sendToast']);
