@@ -11,7 +11,7 @@ class FoodController extends Controller
     public function index()
     {
         $foods = Food::with(['restaurant', 'foodType'])
-            ->select('food_id', 'food_type_id', 'restaurant_id', 'name', 'description', 'unit', 'image_url')
+            ->select('food_id', 'food_type_id', 'restaurant_id', 'name', 'description', 'unit', 'image_url', 'price')
             ->paginate(10);
 
         return response()->json($foods);

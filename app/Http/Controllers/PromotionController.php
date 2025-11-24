@@ -56,6 +56,29 @@ public function getAll()
     ]);
 }
 
+public function checkCode(Request $request)
+{
+    $code = $request->code;
+
+    $promo = Promotion::where('promotion_code', $code)
+        ->where('status', 'active')
+        ->whereDate('start_date', '<=', now())
+        ->whereDate('end_date', '>=', now())
+        ->first();
+
+    if (!$promo) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.'
+        ], 404);
+    }
+
+    return response()->json([
+        'success' => true,
+        'promotion' => $promo
+    ]);
+}
+
     // 📌 Xem chi tiết khuyến mãi
     public function show($id)
     {
