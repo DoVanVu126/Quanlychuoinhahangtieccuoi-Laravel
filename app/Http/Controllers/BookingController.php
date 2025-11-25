@@ -17,7 +17,7 @@ class BookingController extends Controller
     // Lấy danh sách bookings, có thể filter theo restaurant, customer, status
     public function index(Request $request)
     {
-        $query = Booking::query();
+        $query = Booking::with('hall'); // eager load hall để lấy hall_name
 
         if ($request->has('restaurant_id') && $request->restaurant_id != '') {
             $query->where('restaurant_id', $request->restaurant_id);
@@ -31,22 +31,42 @@ class BookingController extends Controller
             $query->where('status', $request->status);
         }
 
-        return $query->get();
+        $bookings = $query->get();
+
+        // map để thêm hall_name + price
+        $bookings = $bookings->map(function($b){
+            return [
+                'booking_id' => $b->booking_id,
+                'customer_id' => $b->customer_id,
+                'created_by_user_id' => $b->created_by_user_id,
+                'restaurant_id' => $b->restaurant_id,
+                'hall_id' => $b->hall_id,
+                'hall_name' => $b->hall ? $b->hall->name : null,
+                'event_type' => $b->event_type,
+                'event_time' => $b->event_time,
+                'event_date' => $b->event_date,
+                'return_date' => $b->return_date,
+                'number_of_tables' => $b->number_of_tables,
+                'status' => $b->status,
+                'notes' => $b->notes,
+                'price' => $b->price,
+                'created_at' => $b->created_at,
+            ];
+        });
+
+        return response()->json($bookings);
     }
 
     // Tạo booking mới
     public function store(Request $request)
     {
-        $user = $request->user(); // Lấy user hiện tại từ token/auth middleware
+        $user = $request->user();
         if (!$user) {
             return response()->json(['message' => 'User chưa đăng nhập'], 401);
         }
 
-        // Kiểm tra xem customer đã tồn tại chưa
         $customer = Customer::firstOrCreate(['user_id' => $user->user_id]);
 
-
-        // Validate dữ liệu: client không gửi `price`, server sẽ tính
         $request->validate([
             'restaurant_id' => 'required|integer|exists:restaurants,restaurant_id',
             'hall_id' => 'required|integer|exists:halls,hall_id',
@@ -63,7 +83,6 @@ class BookingController extends Controller
             'service_ids.*' => 'integer|exists:services,service_id',
         ]);
 
-        // Kiểm tra tính khả dụng: cùng hall_id + event_date + event_time (không tính các booking đã bị 'cancelled')
         try {
             $eventDateOnly = Carbon::parse($request->event_date)->toDateString();
         } catch (\Exception $e) {
@@ -80,10 +99,8 @@ class BookingController extends Controller
             return response()->json(['message' => 'Sảnh đã được đặt vào thời gian này'], 409);
         }
 
-        // Thực hiện trong transaction: tạo booking, lưu pivot, tính giá và cập nhật
         try {
             $booking = DB::transaction(function () use ($request, $customer, $user) {
-                // Tạo booking tạm với price = 0
                 $booking = Booking::create([
                     'customer_id' => $customer->customer_id,
                     'created_by_user_id' => $user->user_id,
@@ -99,7 +116,7 @@ class BookingController extends Controller
                     'notes' => $request->notes,
                 ]);
 
-                // Lưu các món ăn vào bảng pivot `booking_foods` nếu có
+                // Lưu các món ăn
                 $foodIds = $request->input('food_ids', []);
                 if (is_string($foodIds)) {
                     $decoded = json_decode($foodIds, true);
@@ -107,8 +124,8 @@ class BookingController extends Controller
                         $foodIds = $decoded;
                     }
                 }
-                $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds, function($v){ return $v !== null && $v !== ''; })) : [];
-                if (count($foodIds) > 0) {
+                $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds)) : [];
+                if ($foodIds) {
                     $rows = [];
                     foreach ($foodIds as $fid) {
                         $rows[] = [
@@ -121,7 +138,7 @@ class BookingController extends Controller
                     DB::table('booking_foods')->insert($rows);
                 }
 
-                // Lưu các dịch vụ vào bảng pivot `booking_services` nếu có
+                // Lưu dịch vụ
                 $serviceIds = $request->input('service_ids', []);
                 if (is_string($serviceIds)) {
                     $decoded = json_decode($serviceIds, true);
@@ -129,8 +146,8 @@ class BookingController extends Controller
                         $serviceIds = $decoded;
                     }
                 }
-                $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds, function($v){ return $v !== null && $v !== ''; })) : [];
-                if (count($serviceIds) > 0) {
+                $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds)) : [];
+                if ($serviceIds) {
                     $rows = [];
                     foreach ($serviceIds as $sid) {
                         $rows[] = [
@@ -144,23 +161,11 @@ class BookingController extends Controller
                 }
 
                 // Tính tổng giá
-                $hall = Hall::find($request->hall_id);
-                $hallPrice = $hall && $hall->price ? (float)$hall->price : 0.0;
+                $hallPrice = Hall::find($request->hall_id)->price ?? 0;
+                $totalFoodPrice = $foodIds ? Food::whereIn('food_id', $foodIds)->sum('price') : 0;
+                $totalServicePrice = $serviceIds ? Service::whereIn('service_id', $serviceIds)->sum('price') : 0;
 
-                $totalFoodPrice = 0.0;
-                if (count($foodIds) > 0) {
-                    $totalFoodPrice = (float) Food::whereIn('food_id', $foodIds)->sum('price');
-                }
-
-                $totalServicePrice = 0.0;
-                if (count($serviceIds) > 0) {
-                    $totalServicePrice = (float) Service::whereIn('service_id', $serviceIds)->sum('price');
-                }
-
-                $computedPrice = $hallPrice + ((int)$request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
-
-                // Cập nhật booking với giá tính được
-                $booking->price = $computedPrice;
+                $booking->price = $hallPrice + ($request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
                 $booking->save();
 
                 return $booking;
@@ -173,12 +178,27 @@ class BookingController extends Controller
         return response()->json($booking, 201);
     }
 
-
     // Lấy chi tiết booking
     public function show($id)
     {
-        $booking = Booking::findOrFail($id);
-        return response()->json($booking);
+        $booking = Booking::with('hall')->findOrFail($id);
+        return response()->json([
+            'booking_id' => $booking->booking_id,
+            'customer_id' => $booking->customer_id,
+            'created_by_user_id' => $booking->created_by_user_id,
+            'restaurant_id' => $booking->restaurant_id,
+            'hall_id' => $booking->hall_id,
+            'hall_name' => $booking->hall ? $booking->hall->name : null,
+            'event_type' => $booking->event_type,
+            'event_time' => $booking->event_time,
+            'event_date' => $booking->event_date,
+            'return_date' => $booking->return_date,
+            'number_of_tables' => $booking->number_of_tables,
+            'status' => $booking->status,
+            'notes' => $booking->notes,
+            'price' => $booking->price,
+            'created_at' => $booking->created_at,
+        ]);
     }
 
     // Cập nhật booking
@@ -213,6 +233,7 @@ class BookingController extends Controller
 
         return response()->json(['message' => 'Booking deleted successfully']);
     }
+
     // Lấy tất cả booking theo user_id
     public function BookingbyUser(Request $request)
     {
@@ -224,13 +245,11 @@ class BookingController extends Controller
             ], 400);
         }
 
-        // Lấy booking của user, có thể eager load hall nếu cần
-        $bookings = Booking::with('hall') // 'hall' để lấy tên sảnh
+        $bookings = Booking::with('hall')
             ->where('created_by_user_id', $userId)
             ->orderBy('event_date', 'desc')
             ->get();
 
-        // Nếu muốn trả hall_name luôn
         $bookings = $bookings->map(function ($b) {
             return [
                 'booking_id' => $b->booking_id,
@@ -246,6 +265,7 @@ class BookingController extends Controller
                 'number_of_tables' => $b->number_of_tables,
                 'status' => $b->status,
                 'notes' => $b->notes,
+                'price' => $b->price,
                 'created_at' => $b->created_at,
             ];
         });
