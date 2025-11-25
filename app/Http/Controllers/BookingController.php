@@ -3,9 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-
 use App\Models\Booking;
+use App\Models\Hall;
+use App\Models\Food;
+use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class BookingController extends Controller
 {
@@ -41,7 +46,7 @@ class BookingController extends Controller
         $customer = Customer::firstOrCreate(['user_id' => $user->user_id]);
 
 
-        // Validate dữ liệu còn lại
+        // Validate dữ liệu: client không gửi `price`, server sẽ tính
         $request->validate([
             'restaurant_id' => 'required|integer|exists:restaurants,restaurant_id',
             'hall_id' => 'required|integer|exists:halls,hall_id',
@@ -50,26 +55,120 @@ class BookingController extends Controller
             'event_date' => 'required|date',
             'return_date' => 'nullable|date',
             'number_of_tables' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
             'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
+            'food_ids' => 'nullable|array',
+            'food_ids.*' => 'integer|exists:foods,food_id',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'integer|exists:services,service_id',
         ]);
 
-        // Tạo booking
-        $booking = \App\Models\Booking::create([
-            'customer_id' => $customer->customer_id,
-            'created_by_user_id' => $user->user_id,
-            'restaurant_id' => $request->restaurant_id,
-            'hall_id' => $request->hall_id,
-            'event_type' => $request->event_type,
-            'event_time' => $request->event_time,
-            'event_date' => $request->event_date,
-            'return_date' => $request->return_date,
-            'number_of_tables' => $request->number_of_tables,
-            'price' => $request->price,
-            'status' => $request->status ?? 'pending',
-            'notes' => $request->notes,
-        ]);
+        // Kiểm tra tính khả dụng: cùng hall_id + event_date + event_time (không tính các booking đã bị 'cancelled')
+        try {
+            $eventDateOnly = Carbon::parse($request->event_date)->toDateString();
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Ngày sự kiện không hợp lệ'], 422);
+        }
+
+        $conflictExists = Booking::where('hall_id', $request->hall_id)
+            ->where('event_date', $eventDateOnly)
+            ->where('event_time', $request->event_time)
+            ->where('status', '!=', 'cancelled')
+            ->exists();
+
+        if ($conflictExists) {
+            return response()->json(['message' => 'Sảnh đã được đặt vào thời gian này'], 409);
+        }
+
+        // Thực hiện trong transaction: tạo booking, lưu pivot, tính giá và cập nhật
+        try {
+            $booking = DB::transaction(function () use ($request, $customer, $user) {
+                // Tạo booking tạm với price = 0
+                $booking = Booking::create([
+                    'customer_id' => $customer->customer_id,
+                    'created_by_user_id' => $user->user_id,
+                    'restaurant_id' => $request->restaurant_id,
+                    'hall_id' => $request->hall_id,
+                    'event_type' => $request->event_type,
+                    'event_time' => $request->event_time,
+                    'event_date' => $request->event_date,
+                    'return_date' => $request->return_date,
+                    'number_of_tables' => $request->number_of_tables,
+                    'price' => 0,
+                    'status' => $request->status ?? 'pending',
+                    'notes' => $request->notes,
+                ]);
+
+                // Lưu các món ăn vào bảng pivot `booking_foods` nếu có
+                $foodIds = $request->input('food_ids', []);
+                if (is_string($foodIds)) {
+                    $decoded = json_decode($foodIds, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $foodIds = $decoded;
+                    }
+                }
+                $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds, function($v){ return $v !== null && $v !== ''; })) : [];
+                if (count($foodIds) > 0) {
+                    $rows = [];
+                    foreach ($foodIds as $fid) {
+                        $rows[] = [
+                            'booking_id' => $booking->booking_id,
+                            'food_id' => (int)$fid,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                    DB::table('booking_foods')->insert($rows);
+                }
+
+                // Lưu các dịch vụ vào bảng pivot `booking_services` nếu có
+                $serviceIds = $request->input('service_ids', []);
+                if (is_string($serviceIds)) {
+                    $decoded = json_decode($serviceIds, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $serviceIds = $decoded;
+                    }
+                }
+                $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds, function($v){ return $v !== null && $v !== ''; })) : [];
+                if (count($serviceIds) > 0) {
+                    $rows = [];
+                    foreach ($serviceIds as $sid) {
+                        $rows[] = [
+                            'booking_id' => $booking->booking_id,
+                            'service_id' => (int)$sid,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                    DB::table('booking_services')->insert($rows);
+                }
+
+                // Tính tổng giá
+                $hall = Hall::find($request->hall_id);
+                $hallPrice = $hall && $hall->price ? (float)$hall->price : 0.0;
+
+                $totalFoodPrice = 0.0;
+                if (count($foodIds) > 0) {
+                    $totalFoodPrice = (float) Food::whereIn('food_id', $foodIds)->sum('price');
+                }
+
+                $totalServicePrice = 0.0;
+                if (count($serviceIds) > 0) {
+                    $totalServicePrice = (float) Service::whereIn('service_id', $serviceIds)->sum('price');
+                }
+
+                $computedPrice = $hallPrice + ((int)$request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
+
+                // Cập nhật booking với giá tính được
+                $booking->price = $computedPrice;
+                $booking->save();
+
+                return $booking;
+            });
+        } catch (\Exception $e) {
+            Log::error('Booking create failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Tạo booking thất bại'], 500);
+        }
 
         return response()->json($booking, 201);
     }
