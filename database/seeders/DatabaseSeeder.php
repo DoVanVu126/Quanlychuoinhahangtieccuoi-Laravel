@@ -25,5 +25,16 @@ class DatabaseSeeder extends Seeder
             InventorySeeder::class,           // 11
             PaymentsSeeder::class,            // 12
         ]);
+        // \App\Models\User::factory(10)->create();
+
+        // \App\Models\User::factory()->create([
+        //     'name' => 'Test User',
+        //     'email' => 'test@example.com',
+        // ]);
+        $this->call(HallSeeder::class);
+        $this->call([
+    NotificationSeeder::class,
+]);
+
     }
 }

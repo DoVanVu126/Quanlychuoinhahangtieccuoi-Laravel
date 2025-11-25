@@ -9,15 +9,13 @@ class FoodType extends Model
 {
     use HasFactory;
 
+    protected $table = 'food_types';
     protected $primaryKey = 'food_type_id';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
         'name',
         'description',
     ];
-
-    public function foods()
-    {
-        return $this->hasMany(Food::class, 'food_type_id');
-    }
 }
