@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             FoodSeeder::class,                // 7
             ServicesTableSeeder::class,       // 8
             PromotionsTableSeeder::class,     // 9
+            SuggestionPackagesSeeder::class,  // 10 - suggestion packages & items
             ReviewsSeeder::class,             // 10
             InventorySeeder::class,           // 11
             PaymentsSeeder::class,            // 12

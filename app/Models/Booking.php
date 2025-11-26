@@ -53,4 +53,14 @@ class Booking extends Model
     {
         return $this->belongsTo(Customer::class, 'customer_id');
     }
+
+    public function foods()
+    {
+        return $this->belongsToMany(Food::class, 'booking_foods', 'booking_id', 'food_id')->withTimestamps();
+    }
+
+    public function services()
+    {
+        return $this->belongsToMany(Service::class, 'booking_services', 'booking_id', 'service_id')->withTimestamps();
+    }
 }
