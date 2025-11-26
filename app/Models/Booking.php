@@ -25,6 +25,7 @@ class Booking extends Model
         'number_of_tables',
         'status',
         'notes',
+         'price',
     ];
 
     protected $casts = [
@@ -37,6 +38,7 @@ class Booking extends Model
         'event_date' => 'date',
         'return_date' => 'date',
         'number_of_tables' => 'integer',
+        'price' => 'decimal:2',
     ];
 
     public function hall()

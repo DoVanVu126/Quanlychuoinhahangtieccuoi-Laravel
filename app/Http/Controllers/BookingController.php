@@ -17,7 +17,7 @@ class BookingController extends Controller
     // Lấy danh sách bookings, có thể filter theo restaurant, customer, status
     public function index(Request $request)
     {
-        $query = Booking::query();
+        $query = Booking::with('hall'); // eager load hall để lấy hall_name
 
         if ($request->has('restaurant_id') && $request->restaurant_id != '') {
             $query->where('restaurant_id', $request->restaurant_id);
@@ -31,11 +31,34 @@ class BookingController extends Controller
             $query->where('status', $request->status);
         }
 
-        return $query->get();
+        $bookings = $query->get();
+
+        // map để thêm hall_name + price
+        $bookings = $bookings->map(function($b){
+            return [
+                'booking_id' => $b->booking_id,
+                'customer_id' => $b->customer_id,
+                'created_by_user_id' => $b->created_by_user_id,
+                'restaurant_id' => $b->restaurant_id,
+                'hall_id' => $b->hall_id,
+                'hall_name' => $b->hall ? $b->hall->name : null,
+                'event_type' => $b->event_type,
+                'event_time' => $b->event_time,
+                'event_date' => $b->event_date,
+                'return_date' => $b->return_date,
+                'number_of_tables' => $b->number_of_tables,
+                'status' => $b->status,
+                'notes' => $b->notes,
+                'price' => $b->price,
+                'created_at' => $b->created_at,
+            ];
+        });
+
+        return response()->json($bookings);
     }
 
     // Tạo booking mới
-    public function store(Request $request)
+public function store(Request $request)
     {
         $user = $request->user(); // Lấy user hiện tại từ token/auth middleware
         if (!$user) {
@@ -192,8 +215,24 @@ class BookingController extends Controller
     // Lấy chi tiết booking
     public function show($id)
     {
-        $booking = Booking::findOrFail($id);
-        return response()->json($booking);
+        $booking = Booking::with('hall')->findOrFail($id);
+        return response()->json([
+            'booking_id' => $booking->booking_id,
+            'customer_id' => $booking->customer_id,
+            'created_by_user_id' => $booking->created_by_user_id,
+            'restaurant_id' => $booking->restaurant_id,
+            'hall_id' => $booking->hall_id,
+            'hall_name' => $booking->hall ? $booking->hall->name : null,
+            'event_type' => $booking->event_type,
+            'event_time' => $booking->event_time,
+            'event_date' => $booking->event_date,
+            'return_date' => $booking->return_date,
+            'number_of_tables' => $booking->number_of_tables,
+            'status' => $booking->status,
+            'notes' => $booking->notes,
+            'price' => $booking->price,
+            'created_at' => $booking->created_at,
+        ]);
     }
 
     // Cập nhật booking
@@ -228,6 +267,7 @@ class BookingController extends Controller
 
         return response()->json(['message' => 'Booking deleted successfully']);
     }
+
     // Lấy tất cả booking theo user_id
     public function BookingbyUser(Request $request)
     {
@@ -239,13 +279,11 @@ class BookingController extends Controller
             ], 400);
         }
 
-        // Lấy booking của user, có thể eager load hall nếu cần
-        $bookings = Booking::with('hall') // 'hall' để lấy tên sảnh
+        $bookings = Booking::with('hall')
             ->where('created_by_user_id', $userId)
             ->orderBy('event_date', 'desc')
             ->get();
 
-        // Nếu muốn trả hall_name luôn
         $bookings = $bookings->map(function ($b) {
             return [
                 'booking_id' => $b->booking_id,
@@ -261,6 +299,7 @@ class BookingController extends Controller
                 'number_of_tables' => $b->number_of_tables,
                 'status' => $b->status,
                 'notes' => $b->notes,
+                'price' => $b->price,
                 'created_at' => $b->created_at,
             ];
         });

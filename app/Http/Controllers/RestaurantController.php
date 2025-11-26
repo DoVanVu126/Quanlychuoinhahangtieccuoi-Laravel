@@ -9,21 +9,37 @@ class RestaurantController extends Controller
 {
     // 📌 Lấy danh sách nhà hàng (có phân trang)
     public function index()
-    {
-        $restaurants = Restaurant::paginate(10);
+{
+    $restaurants = Restaurant::all(); // Lấy tất cả nhà hàng
 
-        // Chuẩn hóa URL ảnh
-        $restaurants->setCollection(
-            $restaurants->getCollection()->map(function ($r) {
-                if ($r->image_url && !preg_match('/^https?:\/\//', $r->image_url)) {
-                    $r->image_url = asset(trim($r->image_url, '/'));
-                }
-                return $r;
-            })
-        );
+    // Chuẩn hóa URL ảnh
+    $restaurants = $restaurants->map(function ($r) {
+        if ($r->image_url && !preg_match('/^https?:\/\//', $r->image_url)) {
+            $r->image_url = asset(trim($r->image_url, '/'));
+        }
+        return $r;
+    });
 
-        return response()->json($restaurants);
-    }
+    return response()->json($restaurants);
+}
+
+public function paginated(Request $request)
+{
+    $perPage = $request->query('per_page', 10); // Số item / trang
+    $restaurants = Restaurant::paginate($perPage);
+
+    // Chuẩn hóa URL ảnh
+    $restaurants->setCollection(
+        $restaurants->getCollection()->map(function ($r) {
+            if ($r->image_url && !preg_match('/^https?:\/\//', $r->image_url)) {
+                $r->image_url = asset(trim($r->image_url, '/'));
+            }
+            return $r;
+        })
+    );
+
+    return response()->json($restaurants);
+}
 
     // 📌 Lấy chi tiết nhà hàng
     public function show($id)

@@ -15,6 +15,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
+use App\Http\Controllers\UserPromotionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -82,13 +83,17 @@ Route::get('/restaurants/ward', function (Request $request) {
 });
 
 //Nhà hàng
-Route::get('/restaurants/search', [RestaurantController::class, 'search']);
-Route::get('/restaurants', [RestaurantController::class, 'index']);
-Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);
+Route::get('/restaurants/paginated', [RestaurantController::class, 'paginated']); // đặt trước {id}
+Route::get('/restaurants/search', [RestaurantController::class, 'search']);       // đặt trước {id}
+Route::get('/restaurants', [RestaurantController::class, 'index']);               // lấy tất cả
+Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);           // route {id} cuối cùng
+
 Route::post('/restaurants', [RestaurantController::class, 'store']);
 Route::put('/restaurants/{id}', [RestaurantController::class, 'update']);
 Route::delete('/restaurants/{id}', [RestaurantController::class, 'destroy']);
+
 Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
+
 
 // 🏛️ Sảnh tiệc (Hall)
 Route::get('/halls', [HallController::class, 'index']);
@@ -154,3 +159,9 @@ Route::delete('/notifications/{id}', [NotificationController::class, 'deleteNoti
 // Xóa tất cả thông báo của user
 Route::delete('/notifications/delete-all/{userId}', [NotificationController::class, 'deleteAll']);
 Route::post('/notifications/send-toast', [NotificationController::class, 'sendToast']);
+
+
+// khuyến mãi-user
+Route::post('/user-promotions', [UserPromotionController::class, 'store']);
+Route::get('/user-promotions', [UserPromotionController::class, 'index']);
+Route::delete('/user-promotions/{id}', [UserPromotionController::class, 'destroy']);
