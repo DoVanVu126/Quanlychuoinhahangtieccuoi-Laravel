@@ -34,7 +34,7 @@ class BookingController extends Controller
         $bookings = $query->get();
 
         // map để thêm hall_name + price
-        $bookings = $bookings->map(function($b){
+        $bookings = $bookings->map(function ($b) {
             return [
                 'booking_id' => $b->booking_id,
                 'customer_id' => $b->customer_id,
@@ -58,7 +58,7 @@ class BookingController extends Controller
     }
 
     // Tạo booking mới
-public function store(Request $request)
+    public function store(Request $request)
     {
         $user = $request->user(); // Lấy user hiện tại từ token/auth middleware
         if (!$user) {
@@ -135,9 +135,28 @@ public function store(Request $request)
                         }
                     }
                 }
-                $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds, function($v){ return $v !== null && $v !== ''; })) : [];
+                $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds, function ($v) {
+                    return $v !== null && $v !== '';
+                })) : [];
+
+                // If frontend sent detailed objects under `booking_foods`, extract ids
+                if (empty($foodIds) && $request->has('booking_foods')) {
+                    $bf = $request->input('booking_foods', []);
+                    if (is_array($bf)) {
+                        $extracted = [];
+                        foreach ($bf as $obj) {
+                            if (is_array($obj) && isset($obj['food_id'])) $extracted[] = $obj['food_id'];
+                            elseif (is_object($obj) && isset($obj->food_id)) $extracted[] = $obj->food_id;
+                        }
+                        $foodIds = array_values(array_filter($extracted, function ($v) {
+                            return $v !== null && $v !== '';
+                        }));
+                    }
+                }
+
                 // Debug log for parsed food ids
                 Log::info('BookingController parsed food_ids', ['booking_tmp' => null, 'food_ids' => $foodIds]);
+
                 if (count($foodIds) > 0) {
                     $rows = [];
                     foreach ($foodIds as $fid) {
@@ -148,7 +167,8 @@ public function store(Request $request)
                             'updated_at' => now(),
                         ];
                     }
-                    DB::table('booking_foods')->insert($rows);
+                    $ok = DB::table('booking_foods')->insert($rows);
+                    Log::info('BookingController inserted booking_foods', ['booking_id' => $booking->booking_id, 'count' => count($rows), 'ok' => $ok]);
                 }
 
                 // Lưu các dịch vụ vào bảng pivot `booking_services` nếu có
@@ -163,9 +183,28 @@ public function store(Request $request)
                         }
                     }
                 }
-                $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds, function($v){ return $v !== null && $v !== ''; })) : [];
+                $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds, function ($v) {
+                    return $v !== null && $v !== '';
+                })) : [];
+
+                // If frontend sent detailed objects under `booking_services`, extract ids
+                if (empty($serviceIds) && $request->has('booking_services')) {
+                    $bs = $request->input('booking_services', []);
+                    if (is_array($bs)) {
+                        $extracted = [];
+                        foreach ($bs as $obj) {
+                            if (is_array($obj) && isset($obj['service_id'])) $extracted[] = $obj['service_id'];
+                            elseif (is_object($obj) && isset($obj->service_id)) $extracted[] = $obj->service_id;
+                        }
+                        $serviceIds = array_values(array_filter($extracted, function ($v) {
+                            return $v !== null && $v !== '';
+                        }));
+                    }
+                }
+
                 // Debug log for parsed service ids
                 Log::info('BookingController parsed service_ids', ['booking_tmp' => null, 'service_ids' => $serviceIds]);
+
                 if (count($serviceIds) > 0) {
                     $rows = [];
                     foreach ($serviceIds as $sid) {
@@ -176,7 +215,8 @@ public function store(Request $request)
                             'updated_at' => now(),
                         ];
                     }
-                    DB::table('booking_services')->insert($rows);
+                    $ok = DB::table('booking_services')->insert($rows);
+                    Log::info('BookingController inserted booking_services', ['booking_id' => $booking->booking_id, 'count' => count($rows), 'ok' => $ok]);
                 }
 
                 // Tính tổng giá
