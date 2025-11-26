@@ -14,6 +14,7 @@ use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\FoodTypeController;
+use App\Http\Controllers\SuggestionPackageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -97,6 +98,11 @@ Route::put('/halls/{id}', [HallController::class, 'update']);
 Route::delete('/halls/{id}', [HallController::class, 'destroy']);
 // Lấy danh sách sảnh theo restaurant_id
 Route::get('/restaurants/{id}/halls', [HallController::class, 'getHallsByRestaurant']);
+
+// Suggestion packages (Gợi ý)
+Route::get('/suggestion-packages', [SuggestionPackageController::class, 'index']);
+Route::get('/suggestion-packages/{id}', [SuggestionPackageController::class, 'show']);
+Route::get('/restaurants/{id}/suggestion-packages', [SuggestionPackageController::class, 'byRestaurant']);
 
 // 📦 Kho hàng (Inventory)
 Route::get('/inventories', [InventoryController::class, 'index']);

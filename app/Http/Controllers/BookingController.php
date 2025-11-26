@@ -105,9 +105,16 @@ class BookingController extends Controller
                     $decoded = json_decode($foodIds, true);
                     if (json_last_error() === JSON_ERROR_NONE) {
                         $foodIds = $decoded;
+                    } else {
+                        // support comma-separated lists like "1,2,3"
+                        if (strpos($foodIds, ',') !== false) {
+                            $foodIds = array_map('trim', explode(',', $foodIds));
+                        }
                     }
                 }
                 $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds, function($v){ return $v !== null && $v !== ''; })) : [];
+                // Debug log for parsed food ids
+                Log::info('BookingController parsed food_ids', ['booking_tmp' => null, 'food_ids' => $foodIds]);
                 if (count($foodIds) > 0) {
                     $rows = [];
                     foreach ($foodIds as $fid) {
@@ -127,9 +134,15 @@ class BookingController extends Controller
                     $decoded = json_decode($serviceIds, true);
                     if (json_last_error() === JSON_ERROR_NONE) {
                         $serviceIds = $decoded;
+                    } else {
+                        if (strpos($serviceIds, ',') !== false) {
+                            $serviceIds = array_map('trim', explode(',', $serviceIds));
+                        }
                     }
                 }
                 $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds, function($v){ return $v !== null && $v !== ''; })) : [];
+                // Debug log for parsed service ids
+                Log::info('BookingController parsed service_ids', ['booking_tmp' => null, 'service_ids' => $serviceIds]);
                 if (count($serviceIds) > 0) {
                     $rows = [];
                     foreach ($serviceIds as $sid) {
@@ -170,6 +183,8 @@ class BookingController extends Controller
             return response()->json(['message' => 'Tạo booking thất bại'], 500);
         }
 
+        // Trả về booking cùng các món và dịch vụ đã lưu để frontend dễ kiểm tra
+        $booking->load('foods', 'services', 'hall');
         return response()->json($booking, 201);
     }
 
