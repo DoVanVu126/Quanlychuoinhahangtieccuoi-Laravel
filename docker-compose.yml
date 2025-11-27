@@ -52,7 +52,7 @@ services:
     container_name: phpmyadmin
     restart: always
     ports:
-      - "8889:80"   # localhost:8889
+      - "8085:80"   # localhost:8889
     environment:
       PMA_HOST: mysql-db
       PMA_PORT: 3306
