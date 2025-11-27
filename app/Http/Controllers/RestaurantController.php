@@ -9,37 +9,37 @@ class RestaurantController extends Controller
 {
     // 📌 Lấy danh sách nhà hàng (có phân trang)
     public function index()
-{
-    $restaurants = Restaurant::all(); // Lấy tất cả nhà hàng
+    {
+        $restaurants = Restaurant::all(); // Lấy tất cả nhà hàng
 
-    // Chuẩn hóa URL ảnh
-    $restaurants = $restaurants->map(function ($r) {
-        if ($r->image_url && !preg_match('/^https?:\/\//', $r->image_url)) {
-            $r->image_url = asset(trim($r->image_url, '/'));
-        }
-        return $r;
-    });
-
-    return response()->json($restaurants);
-}
-
-public function paginated(Request $request)
-{
-    $perPage = $request->query('per_page', 10); // Số item / trang
-    $restaurants = Restaurant::paginate($perPage);
-
-    // Chuẩn hóa URL ảnh
-    $restaurants->setCollection(
-        $restaurants->getCollection()->map(function ($r) {
+        // Chuẩn hóa URL ảnh
+        $restaurants = $restaurants->map(function ($r) {
             if ($r->image_url && !preg_match('/^https?:\/\//', $r->image_url)) {
                 $r->image_url = asset(trim($r->image_url, '/'));
             }
             return $r;
-        })
-    );
+        });
 
-    return response()->json($restaurants);
-}
+        return response()->json($restaurants);
+    }
+
+    public function paginated(Request $request)
+    {
+        $perPage = $request->query('per_page', 10); // Số item / trang
+        $restaurants = Restaurant::paginate($perPage);
+
+        // Chuẩn hóa URL ảnh
+        $restaurants->setCollection(
+            $restaurants->getCollection()->map(function ($r) {
+                if ($r->image_url && !preg_match('/^https?:\/\//', $r->image_url)) {
+                    $r->image_url = asset(trim($r->image_url, '/'));
+                }
+                return $r;
+            })
+        );
+
+        return response()->json($restaurants);
+    }
 
     // 📌 Lấy chi tiết nhà hàng
     public function show($id)
@@ -191,6 +191,16 @@ public function paginated(Request $request)
             ->orderByRaw("CASE WHEN LOWER(name) LIKE ? THEN 0 ELSE 1 END", ["%{$keyword}%"]);
 
         $restaurants = $query->limit(100)->get(); // ✅ Giới hạn 100 kết quả
+
+        return response()->json($restaurants);
+    }
+    public function topRestaurants()
+    {
+        $restaurants = DB::table('restaurants')
+            ->orderBy('star_rating', 'DESC')     // Ưu tiên sao cao nhất
+            ->orderBy('review_count', 'DESC')    // Nếu trùng sao → xét lượt đánh giá
+            ->limit(10)                          // Lấy top 20 (có thể chỉnh)
+            ->get();
 
         return response()->json($restaurants);
     }

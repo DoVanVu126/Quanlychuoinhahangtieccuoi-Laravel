@@ -83,6 +83,7 @@ Route::get('/restaurants/ward', function (Request $request) {
 });
 
 //Nhà hàng
+Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
 Route::get('/restaurants/paginated', [RestaurantController::class, 'paginated']); // đặt trước {id}
 Route::get('/restaurants/search', [RestaurantController::class, 'search']);       // đặt trước {id}
 Route::get('/restaurants', [RestaurantController::class, 'index']);               // lấy tất cả
@@ -91,9 +92,6 @@ Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);         
 Route::post('/restaurants', [RestaurantController::class, 'store']);
 Route::put('/restaurants/{id}', [RestaurantController::class, 'update']);
 Route::delete('/restaurants/{id}', [RestaurantController::class, 'destroy']);
-
-Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
-
 
 // 🏛️ Sảnh tiệc (Hall)
 Route::get('/halls', [HallController::class, 'index']);
