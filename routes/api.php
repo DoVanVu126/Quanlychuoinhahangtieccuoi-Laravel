@@ -16,6 +16,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
 use App\Http\Controllers\UserPromotionController;
+use App\Http\Controllers\MembershipController;
 
 /*
 |--------------------------------------------------------------------------
@@ -165,3 +166,11 @@ Route::post('/notifications/send-toast', [NotificationController::class, 'sendTo
 Route::post('/user-promotions', [UserPromotionController::class, 'store']);
 Route::get('/user-promotions', [UserPromotionController::class, 'index']);
 Route::delete('/user-promotions/{id}', [UserPromotionController::class, 'destroy']);
+
+
+//Membership
+// Lấy thông tin membership
+Route::get('/membership/{user_id}', [MembershipController::class, 'show'])->name('membership.show');
+
+// Cập nhật membership sau booking confirmed
+Route::post('/membership/booking/{booking_id}', [MembershipController::class, 'updateAfterBooking'])->name('membership.updateAfterBooking');
