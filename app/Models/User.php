@@ -3,34 +3,44 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, Notifiable;
 
-    protected $table = 'users';
+    // Tên cột timestamp duy nhất
+    const CREATED_AT = 'created_at';
+    // Báo cho Laravel biết không có cột updated_at
+    const UPDATED_AT = null; 
+
+    // Chỉ định khóa chính của bạn
     protected $primaryKey = 'user_id';
-    public $incrementing = true;
-    protected $keyType = 'int';
-    public $timestamps = false;
 
+    // Các trường được phép gán hàng loạt (quan trọng cho hàm create)
     protected $fillable = [
         'username',
-        'password_hash',
         'email',
-        'image_url',
-        'role',
-        'created_at',
+        'password_hash', // Phải khớp với tên cột
         'phone',
+        'role',
+        'full_name',
         'address',
+        'image_url',
+    ];
+    // Ẩn cột mật khẩu khi trả về JSON
+    protected $hidden = [
+        'password_hash',
     ];
 
-    // Để Laravel biết dùng password_hash làm mật khẩu
-    public function getAuthPassword()
+    /**
+     * Ghi đè hàm này để Laravel biết tên cột mật khẩu
+     * (Cần cho các chức năng đăng nhập sau này)
+     */
+    public function getAuthPasswordName()
     {
-        return $this->password_hash;
+        return 'password_hash';
     }
 }
+
