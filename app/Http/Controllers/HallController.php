@@ -9,23 +9,37 @@ use Illuminate\Support\Facades\DB;
 class HallController extends Controller
 {
     // 📋 Danh sách sảnh có phân trang (10 sảnh / trang)
-    public function index()
-    {
-        $halls = Hall::with('restaurant')->paginate(10);
+    public function index(Request $request)
+{
+    $page = $request->query('page', 1);
+    $search = $request->query('search', null);
 
-        // Thêm domain vào đường dẫn ảnh (nếu có)
-        $halls->setCollection(
-            $halls->getCollection()->map(function ($hall) {
-                if ($hall->image_url && !preg_match('/^https?:\/\//', $hall->image_url)) {
-                    $hall->image_url = asset(trim($hall->image_url, '/'));
-                }
-                return $hall;
-            })
-        );
+    $query = Hall::with('restaurant');
 
-        return response()->json($halls);
+    if ($search) {
+        $search = trim($search);
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%");
+        });
     }
 
+    $halls = $query->paginate(10, ['*'], 'page', $page);
+
+    // Thêm domain vào đường dẫn ảnh (nếu có)
+    $halls->setCollection(
+        $halls->getCollection()->map(function ($hall) {
+            if ($hall->image_url && !preg_match('/^https?:\/\//', $hall->image_url)) {
+                $hall->image_url = asset(trim($hall->image_url, '/'));
+            } else if (!$hall->image_url) {
+                $hall->image_url = asset('images/default-service.png'); // default image
+            }
+            return $hall;
+        })
+    );
+
+    return response()->json($halls);
+}
     // 📋 Chi tiết 1 sảnh
     public function show($id)
     {
@@ -54,7 +68,7 @@ class HallController extends Controller
             'price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'status' => 'required|string|in:available,unavailable,maintenance',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:10240',
         ]);
 
         // ✅ Upload ảnh (nếu có)
@@ -76,7 +90,7 @@ class HallController extends Controller
     }
 
     // ✏️ Cập nhật sảnh
-    public function update(Request $request, $id)
+      public function update(Request $request, $id)
     {
         $hall = Hall::where('hall_id', $id)->first();
 
@@ -91,11 +105,12 @@ class HallController extends Controller
             'price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'status' => 'required|string|in:available,unavailable,maintenance',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:10240',
         ]);
 
-        // ✅ Nếu có ảnh mới thì xóa ảnh cũ và lưu mới
+        // Nếu có ảnh mới
         if ($request->hasFile('image')) {
+            // Xóa ảnh cũ
             if ($hall->image_url && file_exists(public_path($hall->image_url))) {
                 unlink(public_path($hall->image_url));
             }
@@ -108,8 +123,11 @@ class HallController extends Controller
 
         $hall->update($validated);
 
+        // Trả về đường dẫn đầy đủ
         if ($hall->image_url) {
             $hall->image_url = asset($hall->image_url);
+        } else {
+            $hall->image_url = asset('images/default-service.png');
         }
 
         return response()->json($hall);
