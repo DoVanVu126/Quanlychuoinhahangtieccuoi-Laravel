@@ -4,36 +4,39 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use App\Models\Hall;
 
 class HallSeeder extends Seeder
 {
     public function run(): void
     {
-        // Lấy danh sách ID nhà hàng hiện có
         $restaurantIds = DB::table('restaurants')->pluck('restaurant_id')->toArray();
 
-        // Nếu chưa có nhà hàng nào thì bỏ qua
         if (empty($restaurantIds)) {
             echo "⚠️ Không có dữ liệu nhà hàng trong bảng restaurants. Vui lòng seed restaurants trước.\n";
             return;
         }
 
-        $statuses = ['maintenance', 'active'];
+        $statuses = ['maintenance', 'available'];
 
-        for ($i = 1; $i <= 20; $i++) { // ✅ 20 sảnh
-            DB::table('halls')->insert([
-                'restaurant_id' => $restaurantIds[array_rand($restaurantIds)], // Gán ngẫu nhiên 1 nhà hàng
+        for ($i = 1; $i <= 20; $i++) {
+            $hallData = [
+                'restaurant_id' => $restaurantIds[array_rand($restaurantIds)],
                 'name' => 'Sảnh ' . $i,
                 'capacity' => rand(100, 500),
-                'price' => rand(5, 20) * 1000000, // 5 - 20 triệu
+                'price' => rand(5, 20) * 1000000,
                 'description' => 'Sảnh ' . $i . ' được thiết kế sang trọng, phù hợp tổ chức tiệc cưới và hội nghị.',
                 'status' => $statuses[array_rand($statuses)],
-                'image_url' => 'uploads/halls/1763999441_anh3.jpg', // ✅ ảnh mặc định
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                'image_url' => 'uploads/halls/1763999441_anh3.jpg',
+            ];
+
+            // ✅ update nếu có hall_id = $i, nếu chưa có thì tạo mới
+            Hall::updateOrCreate(
+                ['hall_id' => $i], // tìm theo hall_id
+                $hallData           // update hoặc tạo mới với dữ liệu này
+            );
         }
 
-        echo "✅ Đã tạo 20 sảnh tiệc mẫu thành công!\n";
+        echo "✅ Đã tạo hoặc cập nhật 20 sảnh tiệc mẫu thành công!\n";
     }
 }
