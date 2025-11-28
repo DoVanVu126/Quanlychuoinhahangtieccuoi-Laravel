@@ -4,20 +4,38 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Service;
+use Illuminate\Support\Facades\Validator;
 
 class ServiceController extends Controller
 {
-    // 📌 Lấy danh sách dịch vụ
-    public function index()
+    // 📌 Danh sách dịch vụ với pagination và validate page
+    public function index(Request $request)
     {
-        $services = Service::with('restaurant')->paginate(10);
+        $page = $request->query('page', 1);
+        if (!is_numeric($page) || $page < 1) {
+            return response()->json(['message' => 'Page không hợp lệ'], 400);
+        }
 
-        // Chuẩn hóa URL ảnh (thêm domain nếu cần)
+        $search = $request->query('search', null);
+
+        $query = Service::with('restaurant');
+
+        if ($search) {
+            // Dùng LIKE case-insensitive, bỏ dấu tiếng Việt nếu muốn
+            $query->where('name', 'LIKE', '%' . $search . '%');
+        }
+        $services = $query->paginate(10);
+
+        if ($page > $services->lastPage()) {
+            return response()->json(['message' => 'Page không tồn tại'], 404);
+        }
+
         $services->setCollection(
             $services->getCollection()->map(function ($service) {
                 if ($service->image_url && !preg_match('/^https?:\/\//', $service->image_url)) {
-                    // Đảm bảo không có dấu '/' dư
                     $service->image_url = asset(trim($service->image_url, '/'));
+                } else if (!$service->image_url) {
+                    $service->image_url = asset('images/default-service.png');
                 }
                 return $service;
             })
@@ -26,19 +44,17 @@ class ServiceController extends Controller
         return response()->json($services);
     }
 
-    // 📌 Lấy chi tiết 1 dịch vụ
+    // 📌 Chi tiết dịch vụ
     public function show($id)
     {
-        $service = Service::with('restaurant')
-            ->where('service_id', $id)
-            ->first();
+        $service = Service::with('restaurant')->find($id);
 
-        if (!$service) {
-            return response()->json(['message' => 'Service not found'], 404);
-        }
+        if (!$service) return response()->json(['message' => 'Service not found'], 404);
 
         if ($service->image_url && !preg_match('/^https?:\/\//', $service->image_url)) {
             $service->image_url = asset(trim($service->image_url, '/'));
+        } else if (!$service->image_url) {
+            $service->image_url = asset('images/default-service.png');
         }
 
         return response()->json($service);
@@ -47,69 +63,82 @@ class ServiceController extends Controller
     // 📌 Thêm mới dịch vụ
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'restaurant_id' => 'required|integer',
             'name' => 'required|string|max:255|unique:services,name',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'status' => 'nullable|string|in:available,unavailable,maintenance',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:10240',
+        ], [
+            'image.image' => 'Chỉ được upload hình ảnh',
+            'image.mimes' => 'Chỉ chấp nhận định dạng jpg, jpeg, png, gif',
         ]);
 
-        // Nếu có upload ảnh
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $data = $request->only(['restaurant_id', 'name', 'description', 'price', 'status']);
+
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $fileName = time() . '_' . $file->getClientOriginalName();
             $file->move(public_path('uploads/services'), $fileName);
-
-            // Lưu đường dẫn tương đối (không có dấu '/')
-            $validated['image_url'] = 'uploads/services/' . $fileName;
+            $data['image_url'] = 'uploads/services/' . $fileName;
         }
 
-        $service = Service::create($validated);
+        $service = Service::create($data);
 
-        // Trả về ảnh có domain đầy đủ
         if ($service->image_url) {
             $service->image_url = asset($service->image_url);
+        } else {
+            $service->image_url = asset('images/default-service.png');
         }
 
         return response()->json($service, 201);
     }
 
-    // 📌 Cập nhật dịch vụ
+    // 📌 Update dịch vụ
     public function update(Request $request, $id)
     {
         $service = Service::find($id);
-        if (!$service) {
-            return response()->json(['message' => 'Service not found'], 404);
-        }
+        if (!$service) return response()->json(['message' => 'Service not found'], 404);
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'restaurant_id' => 'required|integer',
             'name' => 'required|string|max:255|unique:services,name,' . $id . ',service_id',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'status' => 'nullable|string|in:available,unavailable,maintenance',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:10240',
+        ], [
+            'image.image' => 'Chỉ được upload hình ảnh',
+            'image.mimes' => 'Chỉ chấp nhận định dạng jpg, jpeg, png, gif',
         ]);
 
-        // Nếu có upload ảnh mới → xóa ảnh cũ + lưu mới
+        if ($validator->fails()) return response()->json(['errors' => $validator->errors()], 422);
+
+        $data = $request->only(['restaurant_id', 'name', 'description', 'price', 'status']);
+
         if ($request->hasFile('image')) {
+            // Xóa ảnh cũ
             if ($service->image_url && file_exists(public_path($service->image_url))) {
                 unlink(public_path($service->image_url));
             }
-
             $file = $request->file('image');
             $fileName = time() . '_' . $file->getClientOriginalName();
             $file->move(public_path('uploads/services'), $fileName);
-            $validated['image_url'] = 'uploads/services/' . $fileName;
+            $data['image_url'] = 'uploads/services/' . $fileName;
+        } else {
+            // Giữ nguyên ảnh cũ
+            $data['image_url'] = $service->image_url;
         }
 
-        $service->update($validated);
+        $service->update($data);
 
-        if ($service->image_url) {
-            $service->image_url = asset($service->image_url);
-        }
+        if ($service->image_url) $service->image_url = asset($service->image_url);
+        else $service->image_url = asset('images/default-service.png');
 
         return response()->json($service);
     }
@@ -117,13 +146,9 @@ class ServiceController extends Controller
     // 📌 Xóa dịch vụ
     public function destroy($id)
     {
-        $service = Service::where('service_id', $id)->first();
+        $service = Service::find($id);
+        if (!$service) return response()->json(['message' => 'Service not found'], 404);
 
-        if (!$service) {
-            return response()->json(['message' => 'Service not found'], 404);
-        }
-
-        // Xóa ảnh trong thư mục (nếu có)
         if ($service->image_url && file_exists(public_path($service->image_url))) {
             unlink(public_path($service->image_url));
         }
@@ -132,6 +157,8 @@ class ServiceController extends Controller
 
         return response()->json(['message' => 'Deleted successfully']);
     }
+
+    // 📌 Lấy dịch vụ theo nhà hàng
     public function getServicesByRestaurant($id)
     {
         $services = Service::where('restaurant_id', $id)->get();
