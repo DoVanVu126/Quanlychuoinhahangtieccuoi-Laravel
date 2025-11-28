@@ -191,7 +191,7 @@ class FoodController extends Controller
             'description' => 'nullable|string|max:2000',
             'unit' => 'required|string|max:50',
             'price' => 'required|numeric|min:0',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:2048',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:10240',
         ]);
 
         // nếu file là pdf -> lỗi
