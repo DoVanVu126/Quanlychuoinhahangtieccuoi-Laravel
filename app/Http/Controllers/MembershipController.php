@@ -30,4 +30,5 @@ class MembershipController extends Controller
         default: return 2; // Đồng / Normal
     }
 }
+
 }
