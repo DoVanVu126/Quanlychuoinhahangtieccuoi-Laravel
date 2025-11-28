@@ -151,15 +151,14 @@ Route::delete('/bookings/{id}', [BookingController::class, 'destroy']);
 
 
 // Notification
-Route::get('/notifications/{userId}', [NotificationController::class, 'getNotifications']);
-Route::post('/notifications/send', [NotificationController::class, 'sendNotification']);
-Route::patch('/notifications/read/{id}', [NotificationController::class, 'markRead']);
-Route::patch('/notifications/read-all/{userId}', [NotificationController::class, 'markAllRead']);
-// Xóa 1 thông báo
-Route::delete('/notifications/{id}', [NotificationController::class, 'deleteNotif']);
+Route::get('/notifications/{user_id}', [NotificationController::class, 'index']);
+Route::post('/notifications', [NotificationController::class, 'store']);
 
-// Xóa tất cả thông báo của user
-Route::delete('/notifications/delete-all/{userId}', [NotificationController::class, 'deleteAll']);
+Route::put('/notifications/read/{id}', [NotificationController::class, 'markRead']);
+Route::put('/notifications/read-all/{user_id}', [NotificationController::class, 'markAllRead']);
+
+Route::delete('/notifications/{id}', [NotificationController::class, 'delete']);
+Route::delete('/notifications/user/{user_id}', [NotificationController::class, 'deleteAll']);
 Route::post('/notifications/send-toast', [NotificationController::class, 'sendToast']);
 
 

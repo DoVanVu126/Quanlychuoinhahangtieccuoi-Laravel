@@ -2,106 +2,71 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Notification;
 use Illuminate\Http\Request;
+use App\Models\Notification;
 use App\Events\NewNotificationEvent;
 
 class NotificationController extends Controller
 {
-    /**
-     * Gửi thông báo cho user (lưu DB + realtime)
-     */
-    public function sendNotification(Request $request)
+    // Lấy danh sách thông báo theo user
+    public function index($user_id)
     {
-        $request->validate([
-            'user_id' => 'required|integer',
-            'title' => 'required|string|max:255',
-            'message' => 'required|string',
-            'type' => 'nullable|string|in:success,info,warning,error',
-            'booking_id' => 'nullable|integer',
-            'promotion_id' => 'nullable|integer',
-            'membership_id' => 'nullable|integer',
-        ]);
-
-        $notif = Notification::create([
-            'user_id' => $request->user_id,
-            'title' => $request->title,
-            'message' => $request->message,
-            'type' => $request->type ?? 'info',
-            'booking_id' => $request->booking_id,
-            'promotion_id' => $request->promotion_id,
-            'membership_id' => $request->membership_id,
-        ]);
-
-        // Gửi realtime event (Pusher / Laravel Echo / WebSockets)
-        broadcast(new NewNotificationEvent($notif))->toOthers();
-
-        return response()->json([
-            'message' => 'Đã gửi thông báo',
-            'notification' => $notif
-        ]);
-    }
-
-    /**
-     * Lấy danh sách tất cả thông báo của user
-     */
-    public function getNotifications($userId)
-    {
-        $notifications = Notification::where('user_id', $userId)
+        return Notification::where('user_id', $user_id)
             ->orderBy('created_at', 'desc')
             ->get();
-
-        return response()->json($notifications);
     }
 
-    /**
-     * Đánh dấu 1 thông báo đã đọc
-     */
+    // Tạo thông báo mới
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'user_id' => 'required',
+            'title' => 'required|string',
+            'message' => 'required|string',
+            'type' => 'nullable|string',
+            'booking_id' => 'nullable|integer',
+            'promotion_id' => 'nullable|integer',
+        ]);
+
+        $notification = Notification::create($data);
+
+        // Gửi realtime
+        event(new NewNotificationEvent($notification));
+
+        return response()->json(['success' => true, 'notification' => $notification]);
+    }
+
+    // Đánh dấu 1 thông báo đã đọc
     public function markRead($id)
     {
-        $notif = Notification::findOrFail($id);
-        $notif->update(['is_read' => true]);
+        $n = Notification::findOrFail($id);
+        $n->is_read = 1;
+        $n->save();
 
-        return response()->json(['message' => 'Đã đánh dấu đã đọc']);
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Đánh dấu tất cả thông báo của user đã đọc
-     */
-    public function markAllRead($userId)
+    // Đánh dấu tất cả đã đọc
+    public function markAllRead($user_id)
     {
-        Notification::where('user_id', $userId)->update(['is_read' => true]);
+        Notification::where('user_id', $user_id)->update(['is_read' => 1]);
 
-        return response()->json(['message' => 'Đã đánh dấu tất cả đã đọc']);
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Xóa 1 thông báo
-     */
-    public function deleteNotif($id)
+    // Xóa 1 thông báo
+    public function delete($id)
     {
-        $notif = Notification::findOrFail($id);
-        $notif->delete();
+        Notification::where('id', $id)->delete();
 
-        return response()->json(['message' => 'Đã xóa thông báo']);
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Xóa tất cả thông báo của user
-     */
-    public function deleteAll($userId)
+    // Xóa tất cả thông báo
+    public function deleteAll($user_id)
     {
-        Notification::where('user_id', $userId)->delete();
+        Notification::where('user_id', $user_id)->delete();
 
-        return response()->json(['message' => 'Đã xóa tất cả thông báo']);
-    }
-
-    /**
-     * Gửi thông báo dạng toast (lưu DB + realtime)
-     */
-    public function sendToast(Request $request)
-    {
-        // Reuse sendNotification để tránh lặp code
-        return $this->sendNotification($request);
+        return response()->json(['success' => true]);
     }
 }
