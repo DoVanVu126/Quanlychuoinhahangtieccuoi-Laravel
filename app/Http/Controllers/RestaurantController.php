@@ -196,10 +196,8 @@ class RestaurantController extends Controller
     }
     public function topRestaurants()
     {
-        $restaurants = DB::table('restaurants')
-            ->orderBy('star_rating', 'DESC')     // Ưu tiên sao cao nhất
-            ->orderBy('review_count', 'DESC')    // Nếu trùng sao → xét lượt đánh giá
-            ->limit(10)                          // Lấy top 20 (có thể chỉnh)
+        $restaurants = Restaurant::orderBy('star_rating', 'desc')
+            ->take(10)
             ->get();
 
         return response()->json($restaurants);
