@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Promotion;
+use Illuminate\Support\Facades\DB;
 
 class PromotionController extends Controller
 {
@@ -34,50 +35,50 @@ class PromotionController extends Controller
     }
 
     // 📌 API cho giao diện người dùng (KHÔNG phân trang)
-public function getAll()
-{
-    $promotions = Promotion::orderBy('promotion_id', 'desc')->get();
+    public function getAll()
+    {
+        $promotions = Promotion::orderBy('promotion_id', 'desc')->get();
 
-    $promotions->transform(function ($promo) {
-        // Nếu có ảnh, chuẩn hóa URL
-        if ($promo->image) {
-            $promo->image = preg_match('/^https?:\/\//', $promo->image)
-                ? $promo->image
-                : asset($promo->image);
-        } else {
-            // Không có ảnh → trả về ảnh mặc định
-            $promo->image = asset('img/default.jpg');
-        }
-        return $promo;
-    });
+        $promotions->transform(function ($promo) {
+            // Nếu có ảnh, chuẩn hóa URL
+            if ($promo->image) {
+                $promo->image = preg_match('/^https?:\/\//', $promo->image)
+                    ? $promo->image
+                    : asset($promo->image);
+            } else {
+                // Không có ảnh → trả về ảnh mặc định
+                $promo->image = asset('img/default.jpg');
+            }
+            return $promo;
+        });
 
-    return response()->json([
-        'data' => $promotions
-    ]);
-}
-
-public function checkCode(Request $request)
-{
-    $code = $request->code;
-
-    $promo = Promotion::where('promotion_code', $code)
-        ->where('status', 'active')
-        ->whereDate('start_date', '<=', now())
-        ->whereDate('end_date', '>=', now())
-        ->first();
-
-    if (!$promo) {
         return response()->json([
-            'success' => false,
-            'message' => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.'
-        ], 404);
+            'data' => $promotions
+        ]);
     }
 
-    return response()->json([
-        'success' => true,
-        'promotion' => $promo
-    ]);
-}
+    public function checkCode(Request $request)
+    {
+        $code = $request->code;
+
+        $promo = Promotion::where('promotion_code', $code)
+            ->where('status', 'active')
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->first();
+
+        if (!$promo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mã khuyến mãi không hợp lệ hoặc đã hết hạn.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'promotion' => $promo
+        ]);
+    }
 
     // 📌 Xem chi tiết khuyến mãi
     public function show($id)
@@ -189,4 +190,82 @@ public function checkCode(Request $request)
 
         return response()->json(['message' => 'Deleted successfully']);
     }
+   // PromotionController.php
+public function recommend(Request $request)
+{
+    $userId = $request->query('user_id');
+    if (!$userId) {
+        return response()->json(['message' => 'user_id is required'], 400);
+    }
+
+    // Lấy lịch sử booking của user
+    $bookings = DB::table('bookings')
+        ->where('created_by_user_id', $userId)
+        ->get();
+
+    // Nếu user chưa booking lần nào → trả 10 promotion mới nhất
+    if ($bookings->isEmpty()) {
+        $promos = Promotion::orderBy('promotion_id', 'desc')->take(10)->get();
+        $promos->transform(fn($promo) => [
+            'promotion_id' => $promo->promotion_id,
+            'restaurant_id' => $promo->restaurant_id,
+            'promotion_code' => $promo->promotion_code,
+            'title' => $promo->title,
+            'description' => $promo->description,
+            'image' => $promo->image ? asset($promo->image) : asset('img/default.jpg'),
+            'discount_type' => $promo->discount_type,
+            'discount_value' => $promo->discount_value,
+            'start_date' => $promo->start_date,
+            'end_date' => $promo->end_date,
+            'status' => $promo->status,
+        ]);
+        return response()->json(['data' => $promos]);
+    }
+
+    // Nếu có booking → tính sở thích
+    $topRestaurant = $bookings->groupBy('restaurant_id')
+        ->sortByDesc(fn($group) => $group->count())
+        ->keys()
+        ->first();
+
+    $topTheme = $bookings->groupBy('event_type')
+        ->sortByDesc(fn($group) => $group->count())
+        ->keys()
+        ->first();
+
+    // Lấy promotion gợi ý dựa theo sở thích user
+    $promos = Promotion::where(function ($q) use ($topRestaurant, $topTheme) {
+        if ($topRestaurant) $q->orWhere('restaurant_id', $topRestaurant);
+        if ($topTheme) {
+            $q->orWhere('title', 'LIKE', "%{$topTheme}%")
+              ->orWhere('description', 'LIKE', "%{$topTheme}%");
+        }
+    })
+    ->orderBy('promotion_id', 'desc')
+    ->take(10)
+    ->get();
+
+    // Nếu vẫn rỗng → fallback 10 promotion mới nhất
+    if ($promos->isEmpty()) {
+        $promos = Promotion::orderBy('promotion_id', 'desc')->take(10)->get();
+    }
+
+    // Chuẩn hóa URL ảnh
+    $promos->transform(fn($promo) => [
+        'promotion_id' => $promo->promotion_id,
+        'restaurant_id' => $promo->restaurant_id,
+        'promotion_code' => $promo->promotion_code,
+        'title' => $promo->title,
+        'description' => $promo->description,
+        'image' => $promo->image ? asset($promo->image) : asset('img/default.jpg'),
+        'discount_type' => $promo->discount_type,
+        'discount_value' => $promo->discount_value,
+        'start_date' => $promo->start_date,
+        'end_date' => $promo->end_date,
+        'status' => $promo->status,
+    ]);
+
+    return response()->json(['data' => $promos]);
+}
+
 }

@@ -139,6 +139,7 @@ Route::delete('/promotions/{id}', [PromotionController::class, 'destroy']);
 Route::get('/promotions/check', [PromotionController::class, 'checkCode']);
 
 
+
 // Bookings
 Route::get('/bookings/user', [BookingController::class, 'BookingbyUser']);
 Route::get('/bookings', [BookingController::class, 'index']);
