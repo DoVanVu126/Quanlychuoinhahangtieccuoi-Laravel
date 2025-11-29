@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use App\Mail\BookingCreatedMail;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class BookingController extends Controller
 {
@@ -244,25 +245,98 @@ class BookingController extends Controller
     // Cập nhật booking
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'customer_id' => 'required|integer',
-            'created_by_user_id' => 'required|integer',
-            'restaurant_id' => 'required|integer',
-            'hall_id' => 'required|integer',
-            'event_type' => 'required|string|max:255',
-            'event_time' => 'required',
-            'event_date' => 'required|date',
-            'return_date' => 'nullable|date',
-            'number_of_tables' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
-            'status' => 'nullable|string|max:50',
-            'notes' => 'nullable|string',
+        // Validate các trường thường dùng trong booking
+        $validated = $request->validate([
+            'customer_id'         => 'nullable|integer|exists:users,user_id',
+            'created_by_user_id'  => 'nullable|integer|exists:users,user_id',
+            'restaurant_id'       => 'nullable|integer|exists:restaurants,restaurant_id',
+            'hall_id'             => 'nullable|integer|exists:halls,hall_id',
+            'event_type'          => 'nullable|string|max:191',
+            'event_date'          => 'nullable|date',
+            'event_time'          => 'nullable|string|max:50',
+            'return_date'         => 'nullable|date',
+            'number_of_tables'    => 'nullable|integer|min:0',
+            'price'               => 'nullable|numeric|min:0',
+            'status'              => 'nullable|string|max:50',
+            'notes'               => 'nullable|string',
         ]);
 
-        $booking = Booking::findOrFail($id);
-        $booking->update($request->all());
+        $booking = Booking::find($id);
+        if (! $booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
 
-        return response()->json($booking);
+        // --- Compute price parts ---
+        $bookingId = $booking->booking_id ?? $booking->id ?? $id;
+
+        // 1) Hall base price
+        $hallBase = 0;
+        $hallId = $validated['hall_id'] ?? $booking->hall_id ?? null;
+        if ($hallId) {
+            // Safe lookup: only add orWhere('id', ...) if column 'id' exists
+            if (Schema::hasColumn('halls', 'id')) {
+                $hall = Hall::where('hall_id', $hallId)->orWhere('id', $hallId)->first();
+            } else {
+                $hall = Hall::where('hall_id', $hallId)->first();
+            }
+
+            if ($hall) {
+                $hallBase = (float) ($hall->price ?? $hall->hall_price ?? $hall->base_price ?? 0);
+            }
+        }
+
+        // 2) Sum food prices for this booking
+        $foodSum = 0;
+        try {
+            $foodSum = (float) DB::table('booking_foods')
+                ->join('foods', 'booking_foods.food_id', '=', 'foods.food_id')
+                ->where('booking_foods.booking_id', $bookingId)
+                ->sum(DB::raw('COALESCE(foods.price,0)'));
+        } catch (\Exception $e) {
+            // fallback: try join on foods.id
+            try {
+                $foodSum = (float) DB::table('booking_foods')
+                    ->join('foods', 'booking_foods.food_id', '=', 'foods.id')
+                    ->where('booking_foods.booking_id', $bookingId)
+                    ->sum(DB::raw('COALESCE(foods.price,0)'));
+            } catch (\Exception $e2) {
+                $foodSum = 0;
+            }
+        }
+
+        // 3) Sum service prices for this booking
+        $serviceSum = 0;
+        try {
+            $serviceSum = (float) DB::table('booking_services')
+                ->join('services', 'booking_services.service_id', '=', 'services.service_id')
+                ->where('booking_services.booking_id', $bookingId)
+                ->sum(DB::raw('COALESCE(services.price,0)'));
+        } catch (\Exception $e) {
+            // fallback: try services.id
+            try {
+                $serviceSum = (float) DB::table('booking_services')
+                    ->join('services', 'booking_services.service_id', '=', 'services.id')
+                    ->where('booking_services.booking_id', $bookingId)
+                    ->sum(DB::raw('COALESCE(services.price,0)'));
+            } catch (\Exception $e2) {
+                $serviceSum = 0;
+            }
+        }
+
+        $tables = isset($validated['number_of_tables']) ? (int)$validated['number_of_tables'] : (int)($booking->number_of_tables ?? 0);
+
+        // Final price formula
+        $computedPrice = $hallBase + ($tables * $foodSum) + $serviceSum;
+
+        // Set computed price into validated data so fill() saves it
+        $validated['price'] = $computedPrice;
+
+        // Now update booking
+        $booking->fill($validated);
+        $booking->save();
+
+        // Return updated booking including computed price
+        return response()->json($booking->fresh());
     }
 
     // Xóa booking
