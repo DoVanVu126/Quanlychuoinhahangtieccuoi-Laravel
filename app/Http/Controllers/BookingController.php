@@ -36,7 +36,7 @@ class BookingController extends Controller
         $bookings = $query->get();
 
         // map để thêm hall_name + price
-        $bookings = $bookings->map(function ($b) {
+        $bookings = $bookings->map(function($b){
             return [
                 'booking_id' => $b->booking_id,
                 'customer_id' => $b->customer_id,
@@ -60,7 +60,7 @@ class BookingController extends Controller
     }
 
     // Tạo booking mới
-public function store(Request $request)
+   public function store(Request $request)
 {
     $user = $request->user(); // Lấy user hiện tại
     if (!$user) {
@@ -70,6 +70,7 @@ public function store(Request $request)
     // Kiểm tra customer
     $customer = Customer::firstOrCreate(['user_id' => $user->user_id]);
 
+    // Validate request
     $request->validate([
         'restaurant_id' => 'required|integer|exists:restaurants,restaurant_id',
         'hall_id' => 'required|integer|exists:halls,hall_id',
@@ -86,12 +87,14 @@ public function store(Request $request)
         'service_ids.*' => 'integer|exists:services,service_id',
     ]);
 
+    // Chuyển event_date sang định dạng date
     try {
         $eventDateOnly = Carbon::parse($request->event_date)->toDateString();
     } catch (\Exception $e) {
         return response()->json(['message' => 'Ngày sự kiện không hợp lệ'], 422);
     }
 
+    // Kiểm tra trùng lịch
     $conflictExists = Booking::where('hall_id', $request->hall_id)
         ->where('event_date', $eventDateOnly)
         ->where('event_time', $request->event_time)
@@ -102,6 +105,7 @@ public function store(Request $request)
         return response()->json(['message' => 'Sảnh đã được đặt vào thời gian này'], 409);
     }
 
+    // Tạo booking trong transaction
     try {
         $booking = DB::transaction(function () use ($request, $customer, $user) {
             $booking = Booking::create([
@@ -119,7 +123,7 @@ public function store(Request $request)
                 'notes' => $request->notes,
             ]);
 
-            // Xử lý food_ids
+            // --- Xử lý food_ids ---
             $foodIds = $request->input('food_ids', []);
             if (is_string($foodIds)) {
                 $decoded = json_decode($foodIds, true);
@@ -127,15 +131,20 @@ public function store(Request $request)
                 else if (strpos($foodIds, ',') !== false) $foodIds = array_map('trim', explode(',', $foodIds));
             }
             $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds)) : [];
-            if (count($foodIds) > 0) {
+            if ($foodIds) {
                 $rows = [];
                 foreach ($foodIds as $fid) {
-                    $rows[] = ['booking_id' => $booking->booking_id, 'food_id' => (int)$fid, 'created_at'=>now(), 'updated_at'=>now()];
+                    $rows[] = [
+                        'booking_id' => $booking->booking_id,
+                        'food_id' => (int)$fid,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
                 }
                 DB::table('booking_foods')->insert($rows);
             }
 
-            // Xử lý service_ids
+            // --- Xử lý service_ids ---
             $serviceIds = $request->input('service_ids', []);
             if (is_string($serviceIds)) {
                 $decoded = json_decode($serviceIds, true);
@@ -143,37 +152,44 @@ public function store(Request $request)
                 else if (strpos($serviceIds, ',') !== false) $serviceIds = array_map('trim', explode(',', $serviceIds));
             }
             $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds)) : [];
-            if (count($serviceIds) > 0) {
+            if ($serviceIds) {
                 $rows = [];
                 foreach ($serviceIds as $sid) {
-                    $rows[] = ['booking_id' => $booking->booking_id, 'service_id' => (int)$sid, 'created_at'=>now(), 'updated_at'=>now()];
+                    $rows[] = [
+                        'booking_id' => $booking->booking_id,
+                        'service_id' => (int)$sid,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
                 }
                 DB::table('booking_services')->insert($rows);
             }
 
-            // Tính tổng giá
+            // --- Tính tổng giá ---
             $hallPrice = Hall::find($request->hall_id)->price ?? 0;
-            $totalFoodPrice = Food::whereIn('food_id', $foodIds)->sum('price') ?? 0;
-            $totalServicePrice = Service::whereIn('service_id', $serviceIds)->sum('price') ?? 0;
-            $booking->price = $hallPrice + ((int)$request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
+            $totalFoodPrice = $foodIds ? Food::whereIn('food_id', $foodIds)->sum('price') : 0;
+            $totalServicePrice = $serviceIds ? Service::whereIn('service_id', $serviceIds)->sum('price') : 0;
+
+            $booking->price = $hallPrice + ($request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
             $booking->save();
 
             return $booking;
         });
 
-        // ✅ Tạo notification
+        // --- Tạo notification ---
         $notification = \App\Models\Notification::create([
             'user_id' => $booking->created_by_user_id,
+            'booking_id' => $booking->booking_id,
             'title' => 'Đặt tiệc thành công',
             'message' => 'Đơn #' . $booking->booking_id . ' của bạn đã được tạo.',
             'type' => 'success'
         ]);
         event(new \App\Events\NewNotificationEvent($notification));
 
-        // ✅ Gửi email
+        // --- Gửi email ---
         $userEmail = $user->email ?? null;
         if ($userEmail) {
-            Mail::to($userEmail)->queue(new BookingCreatedMail($booking,$user));
+            Mail::to($userEmail)->queue(new BookingCreatedMail($booking, $user));
         }
 
     } catch (\Exception $e) {
@@ -184,7 +200,6 @@ public function store(Request $request)
     $booking->load('foods', 'services', 'hall');
     return response()->json($booking, 201);
 }
-
 
 
     // Lấy chi tiết booking
