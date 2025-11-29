@@ -63,16 +63,15 @@ class BookingController extends Controller
     // Tạo booking mới
     public function store(Request $request)
     {
-        $user = $request->user(); // Lấy user hiện tại từ token/auth middleware
+        $user = $request->user(); // Lấy user hiện tại
         if (!$user) {
             return response()->json(['message' => 'User chưa đăng nhập'], 401);
         }
 
-        // Kiểm tra xem customer đã tồn tại chưa
+        // Kiểm tra customer
         $customer = Customer::firstOrCreate(['user_id' => $user->user_id]);
 
-
-        // Validate dữ liệu: client không gửi `price`, server sẽ tính
+        // Validate request
         $request->validate([
             'restaurant_id' => 'required|integer|exists:restaurants,restaurant_id',
             'hall_id' => 'required|integer|exists:halls,hall_id',
@@ -89,13 +88,14 @@ class BookingController extends Controller
             'service_ids.*' => 'integer|exists:services,service_id',
         ]);
 
-        // Kiểm tra tính khả dụng: cùng hall_id + event_date + event_time (không tính các booking đã bị 'cancelled')
+        // Chuyển event_date sang định dạng date
         try {
             $eventDateOnly = Carbon::parse($request->event_date)->toDateString();
         } catch (\Exception $e) {
             return response()->json(['message' => 'Ngày sự kiện không hợp lệ'], 422);
         }
 
+        // Kiểm tra trùng lịch
         $conflictExists = Booking::where('hall_id', $request->hall_id)
             ->where('event_date', $eventDateOnly)
             ->where('event_time', $request->event_time)
@@ -106,10 +106,9 @@ class BookingController extends Controller
             return response()->json(['message' => 'Sảnh đã được đặt vào thời gian này'], 409);
         }
 
-        // Thực hiện trong transaction: tạo booking, lưu pivot, tính giá và cập nhật
+        // Tạo booking trong transaction
         try {
             $booking = DB::transaction(function () use ($request, $customer, $user) {
-                // Tạo booking tạm với price = 0
                 $booking = Booking::create([
                     'customer_id' => $customer->customer_id,
                     'created_by_user_id' => $user->user_id,
@@ -125,25 +124,15 @@ class BookingController extends Controller
                     'notes' => $request->notes,
                 ]);
 
-                // Lưu các món ăn vào bảng pivot `booking_foods` nếu có
+                // --- Xử lý food_ids ---
                 $foodIds = $request->input('food_ids', []);
                 if (is_string($foodIds)) {
                     $decoded = json_decode($foodIds, true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $foodIds = $decoded;
-                    } else {
-                        // support comma-separated lists like "1,2,3"
-                        if (strpos($foodIds, ',') !== false) {
-                            $foodIds = array_map('trim', explode(',', $foodIds));
-                        }
-                    }
+                    if (json_last_error() === JSON_ERROR_NONE) $foodIds = $decoded;
+                    else if (strpos($foodIds, ',') !== false) $foodIds = array_map('trim', explode(',', $foodIds));
                 }
-                $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds, function ($v) {
-                    return $v !== null && $v !== '';
-                })) : [];
-                // Debug log for parsed food ids
-                Log::info('BookingController parsed food_ids', ['booking_tmp' => null, 'food_ids' => $foodIds]);
-                if (count($foodIds) > 0) {
+                $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds)) : [];
+                if ($foodIds) {
                     $rows = [];
                     foreach ($foodIds as $fid) {
                         $rows[] = [
@@ -156,24 +145,15 @@ class BookingController extends Controller
                     DB::table('booking_foods')->insert($rows);
                 }
 
-                // Lưu các dịch vụ vào bảng pivot `booking_services` nếu có
+                // --- Xử lý service_ids ---
                 $serviceIds = $request->input('service_ids', []);
                 if (is_string($serviceIds)) {
                     $decoded = json_decode($serviceIds, true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $serviceIds = $decoded;
-                    } else {
-                        if (strpos($serviceIds, ',') !== false) {
-                            $serviceIds = array_map('trim', explode(',', $serviceIds));
-                        }
-                    }
+                    if (json_last_error() === JSON_ERROR_NONE) $serviceIds = $decoded;
+                    else if (strpos($serviceIds, ',') !== false) $serviceIds = array_map('trim', explode(',', $serviceIds));
                 }
-                $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds, function ($v) {
-                    return $v !== null && $v !== '';
-                })) : [];
-                // Debug log for parsed service ids
-                Log::info('BookingController parsed service_ids', ['booking_tmp' => null, 'service_ids' => $serviceIds]);
-                if (count($serviceIds) > 0) {
+                $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds)) : [];
+                if ($serviceIds) {
                     $rows = [];
                     foreach ($serviceIds as $sid) {
                         $rows[] = [
@@ -186,38 +166,39 @@ class BookingController extends Controller
                     DB::table('booking_services')->insert($rows);
                 }
 
-                // Tính tổng giá
-                $hall = Hall::find($request->hall_id);
-                $hallPrice = $hall && $hall->price ? (float)$hall->price : 0.0;
+                // --- Tính tổng giá ---
+                $hallPrice = Hall::find($request->hall_id)->price ?? 0;
+                $totalFoodPrice = $foodIds ? Food::whereIn('food_id', $foodIds)->sum('price') : 0;
+                $totalServicePrice = $serviceIds ? Service::whereIn('service_id', $serviceIds)->sum('price') : 0;
 
-                $totalFoodPrice = 0.0;
-                if (count($foodIds) > 0) {
-                    $totalFoodPrice = (float) Food::whereIn('food_id', $foodIds)->sum('price');
-                }
-
-                $totalServicePrice = 0.0;
-                if (count($serviceIds) > 0) {
-                    $totalServicePrice = (float) Service::whereIn('service_id', $serviceIds)->sum('price');
-                }
-
-                $computedPrice = $hallPrice + ((int)$request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
-
-                // Cập nhật booking với giá tính được
-                $booking->price = $computedPrice;
+                $booking->price = $hallPrice + ($request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
                 $booking->save();
 
                 return $booking;
             });
+
+            // --- Tạo notification ---
+            $notification = \App\Models\Notification::create([
+                'user_id' => $booking->created_by_user_id,
+                'title' => 'Đặt tiệc thành công',
+                'message' => 'Đơn #' . $booking->booking_id . ' của bạn đã được tạo.',
+                'type' => 'success'
+            ]);
+            event(new \App\Events\NewNotificationEvent($notification));
+
+            // --- Gửi email ---
+            $userEmail = $user->email ?? null;
+            if ($userEmail) {
+                Mail::to($userEmail)->queue(new BookingCreatedMail($booking, $user));
+            }
         } catch (\Exception $e) {
             Log::error('Booking create failed: ' . $e->getMessage());
             return response()->json(['message' => 'Tạo booking thất bại'], 500);
         }
 
-        // Trả về booking cùng các món và dịch vụ đã lưu để frontend dễ kiểm tra
         $booking->load('foods', 'services', 'hall');
         return response()->json($booking, 201);
     }
-
 
     // Lấy chi tiết booking
     public function show($id)
