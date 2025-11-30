@@ -17,6 +17,8 @@ use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
 use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
+use App\Http\Controllers\CustomerController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -28,6 +30,14 @@ use App\Http\Controllers\MembershipController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+// Customer routes
+Route::middleware('auth:sanctum')->group(function () {
+Route::get('/customers', [CustomerController::class, 'index']); // Lấy danh sách
+    Route::get('/customers/{id}/details', [CustomerController::class, 'showDetails']); // Lấy chi tiết (Booking + Payment)
+});
+
+
+
 Route::post('/login', [UserController::class, 'login']);
 
 

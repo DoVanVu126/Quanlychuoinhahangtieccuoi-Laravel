@@ -37,5 +37,6 @@ class DatabaseSeeder extends Seeder
     NotificationSeeder::class,
 ]);
 
+        $this->call(CustomerSeeder::class);
     }
 }

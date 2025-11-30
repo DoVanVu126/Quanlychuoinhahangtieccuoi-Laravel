@@ -28,9 +28,70 @@ class User extends Authenticatable
         'address',
     ];
 
+    protected $hidden = [
+        'password_hash',
+    ];
+
     // Để Laravel biết dùng password_hash làm mật khẩu
     public function getAuthPassword()
     {
         return $this->password_hash;
+    }
+
+    /**
+     * Quan hệ với Customer
+     * 1 User có thể có 1 Customer record (khi đặt tiệc)
+     */
+    public function customer()
+    {
+        return $this->hasOne(Customer::class, 'user_id', 'user_id');
+    }
+
+    /**
+     * Kiểm tra user có phải là khách hàng đã đặt tiệc không
+     */
+    public function isCustomer()
+    {
+        return $this->customer()->exists();
+    }
+
+    /**
+     * Scope lấy chỉ customer
+     */
+    public function scopeCustomersOnly($query)
+    {
+        return $query->where('role', 'customer');
+    }
+
+    /**
+     * Scope lấy chỉ staff
+     */
+    public function scopeStaffOnly($query)
+    {
+        return $query->where('role', 'staff');
+    }
+
+    /**
+     * Scope lấy chỉ admin
+     */
+    public function scopeAdminOnly($query)
+    {
+        return $query->where('role', 'admin');
+    }
+
+    /**
+     * Scope tìm kiếm user
+     */
+    public function scopeSearch($query, $search)
+    {
+        if (empty($search)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($search) {
+            $q->where('username', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%")
+              ->orWhere('phone', 'like', "%{$search}%");
+        });
     }
 }
