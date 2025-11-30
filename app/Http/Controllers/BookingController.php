@@ -11,9 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 use App\Mail\BookingCreatedMail;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
 
 class BookingController extends Controller
 {
@@ -319,14 +319,25 @@ class BookingController extends Controller
         // Return updated booking including computed price
         return response()->json($booking->fresh());
     }
-
     // Xóa booking
     public function destroy($id)
     {
-        $booking = Booking::findOrFail($id);
-        $booking->delete();
+        $booking = Booking::find($id);
+        if (! $booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
 
-        return response()->json(['message' => 'Booking deleted successfully']);
+        try {
+            $booking->delete();
+            // trả 200 với message hoặc 204 không body; frontend hiện đang gọi và reload danh sách
+            return response()->json(['message' => 'Booking deleted successfully.'], 200);
+        } catch (\Exception $e) {
+            // lỗi khi xóa (ví dụ ràng buộc FK)
+            return response()->json([
+                'message' => 'Unable to delete booking.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // Lấy tất cả booking theo user_id
