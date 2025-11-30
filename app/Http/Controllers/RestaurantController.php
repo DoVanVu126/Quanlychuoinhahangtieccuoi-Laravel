@@ -194,4 +194,12 @@ class RestaurantController extends Controller
 
         return response()->json($restaurants);
     }
+    public function topRestaurants()
+    {
+        $restaurants = Restaurant::orderBy('star_rating', 'desc')
+            ->take(10)
+            ->get();
+
+        return response()->json($restaurants);
+    }
 }

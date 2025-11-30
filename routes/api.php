@@ -84,6 +84,7 @@ Route::get('/restaurants/ward', function (Request $request) {
 });
 
 //Nhà hàng
+Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
 Route::get('/restaurants/paginated', [RestaurantController::class, 'paginated']); // đặt trước {id}
 Route::get('/restaurants/search', [RestaurantController::class, 'search']);       // đặt trước {id}
 Route::get('/restaurants', [RestaurantController::class, 'index']);               // lấy tất cả
@@ -92,9 +93,6 @@ Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);         
 Route::post('/restaurants', [RestaurantController::class, 'store']);
 Route::put('/restaurants/{id}', [RestaurantController::class, 'update']);
 Route::delete('/restaurants/{id}', [RestaurantController::class, 'destroy']);
-
-Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
-
 
 // 🏛️ Sảnh tiệc (Hall)
 Route::get('/halls', [HallController::class, 'index']);
@@ -109,7 +107,16 @@ Route::get('/restaurants/{id}/halls', [HallController::class, 'getHallsByRestaur
 Route::get('/suggestion-packages', [SuggestionPackageController::class, 'index']);
 Route::get('/suggestion-packages/{id}', [SuggestionPackageController::class, 'show']);
 Route::get('/restaurants/{id}/suggestion-packages', [SuggestionPackageController::class, 'byRestaurant']);
+Route::post('/suggestion-packages', [SuggestionPackageController::class, 'store']);
+Route::put('/suggestion-packages/{id}', [SuggestionPackageController::class, 'update']);
+Route::delete('/suggestion-packages/{id}', [SuggestionPackageController::class, 'destroy']);
 
+// Convenience endpoints to add/remove single food/service
+Route::post('/suggestion-packages/{id}/foods', [SuggestionPackageController::class, 'addFood']);
+Route::delete('/suggestion-packages/{id}/foods/{foodId}', [SuggestionPackageController::class, 'removeFood']);
+
+Route::post('/suggestion-packages/{id}/services', [SuggestionPackageController::class, 'addService']);
+Route::delete('/suggestion-packages/{id}/services/{serviceId}', [SuggestionPackageController::class, 'removeService']);
 // 📦 Kho hàng (Inventory)
 Route::get('/inventories', [InventoryController::class, 'index']);
 Route::get('/inventories/low-stock', [InventoryController::class, 'lowStock']);

@@ -2,8 +2,8 @@ FROM php:8.2-fpm
 
 # Cài đặt các gói cần thiết cho Laravel
 RUN apt-get update && apt-get install -y \
-    libpng-dev libjpeg-dev libfreetype6-dev zip unzip git curl \
-    && docker-php-ext-install pdo pdo_mysql mysqli gd
+    libpng-dev libjpeg-dev libfreetype6-dev zip unzip git curl libzip-dev \
+    && docker-php-ext-install pdo pdo_mysql mysqli gd zip
 
 # Cài đặt Xdebug
 RUN pecl install xdebug \
