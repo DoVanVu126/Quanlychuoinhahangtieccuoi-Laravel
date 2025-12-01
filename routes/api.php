@@ -17,6 +17,9 @@ use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
 use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
+use App\Http\Controllers\AuthController; 
+use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,7 +42,26 @@ Route::get('/users', [UserController::class, 'index']);
 Route::post('/users', [UserController::class, 'store']);
 Route::put('/users/{id}', [UserController::class, 'update']);
 Route::delete('/users/{id}', [UserController::class, 'destroy']);
-Route::get('/users/{id}', [UserController::class, 'show']);
+
+// Xác thực người dùng 
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+// Đặt lại mật khẩu
+Route::prefix('password-reset')->group(function () {
+    Route::post('/send-otp', [PasswordResetController::class, 'sendOtp']);
+    Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp']);
+    Route::post('/reset', [PasswordResetController::class, 'resetPassword']);
+});
+
+// Hồ sơ người dùng
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::delete('/profile', [ProfileController::class, 'destroy']);
+    Route::put('/changePassword', [ProfileController::class, 'changePassword']);
+});
 
 // danh sách dịch vụ
 Route::get('/services', [ServiceController::class, 'index']);

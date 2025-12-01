@@ -9,7 +9,16 @@ class Customer extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'customer_id'; // nếu key của bạn là customer_id
-    public $timestamps = true; // nếu muốn created_at tự động
-    protected $fillable = ['user_id'];
+    // Tên cột timestamp duy nhất
+    const CREATED_AT = 'created_at';
+    // Không có cột updated_at
+    const UPDATED_AT = null;
+
+    // Chỉ định khóa chính
+    protected $primaryKey = 'customer_id';
+
+    // Các trường được phép gán hàng loạt
+    protected $fillable = [
+        'user_id',
+    ];
 }

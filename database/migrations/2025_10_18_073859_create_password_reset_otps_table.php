@@ -11,26 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::create('password_reset_otps', function (Blueprint $table) {
-            $table->id();  // Khóa chính tự tăng
-            $table->unsignedBigInteger('user_id'); // Khóa ngoại liên kết users
-            $table->string('email', 255);
-            $table->char('otp', 6);
-            $table->boolean('is_used')->default(false);
-            $table->timestamp('created_at')->useCurrent();
-            $table->timestamp('expires_at');
-
-            // Khóa ngoại
-            $table->foreign('user_id')
-                  ->references('user_id')
-                  ->on('users')
-                  ->onDelete('cascade');
+        // Tạo bảng mới để lưu mã OTP
+        Schema::create('password_reset_otps', function (Blueprint $table) {
+            $table->string('email')->primary(); // Dùng email làm khóa chính
+            $table->string('otp_code');       // Cột để lưu 6 số OTP
+            $table->timestamp('expires_at');  // Cột lưu thời gian hết hạn
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('password_reset_otps');
