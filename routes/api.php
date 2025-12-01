@@ -20,6 +20,8 @@ use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\AuthController; 
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\CustomerController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -31,8 +33,6 @@ use App\Http\Controllers\Api\ProfileController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-Route::post('/login', [UserController::class, 'login']);
-
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -61,6 +61,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
     Route::delete('/profile', [ProfileController::class, 'destroy']);
     Route::put('/changePassword', [ProfileController::class, 'changePassword']);
+});
+
+// Customer routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/customers', [CustomerController::class, 'index']); // Lấy danh sách
+    Route::get('/customers/{id}/details', [CustomerController::class, 'showDetails']); // Lấy chi tiết (Booking + Payment)
 });
 
 // danh sách dịch vụ

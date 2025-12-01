@@ -3,44 +3,95 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
-    // Tên cột timestamp duy nhất
-    const CREATED_AT = 'created_at';
-    // Báo cho Laravel biết không có cột updated_at
-    const UPDATED_AT = null; 
-
-    // Chỉ định khóa chính của bạn
+    protected $table = 'users';
     protected $primaryKey = 'user_id';
+    public $incrementing = true;
+    protected $keyType = 'int';
+    public $timestamps = false;
 
-    // Các trường được phép gán hàng loạt (quan trọng cho hàm create)
     protected $fillable = [
         'username',
+        'password_hash',
         'email',
-        'password_hash', // Phải khớp với tên cột
-        'phone',
-        'role',
-        'full_name',
-        'address',
         'image_url',
+        'role',
+        'created_at',
+        'phone',
+        'address',
     ];
-    // Ẩn cột mật khẩu khi trả về JSON
+
     protected $hidden = [
         'password_hash',
     ];
 
-    /**
-     * Ghi đè hàm này để Laravel biết tên cột mật khẩu
-     * (Cần cho các chức năng đăng nhập sau này)
-     */
-    public function getAuthPasswordName()
+    // Để Laravel biết dùng password_hash làm mật khẩu
+    public function getAuthPassword()
     {
-        return 'password_hash';
+        return $this->password_hash;
+    }
+
+    /**
+     * Quan hệ với Customer
+     * 1 User có thể có 1 Customer record (khi đặt tiệc)
+     */
+    public function customer()
+    {
+        return $this->hasOne(Customer::class, 'user_id', 'user_id');
+    }
+
+    /**
+     * Kiểm tra user có phải là khách hàng đã đặt tiệc không
+     */
+    public function isCustomer()
+    {
+        return $this->customer()->exists();
+    }
+
+    /**
+     * Scope lấy chỉ customer
+     */
+    public function scopeCustomersOnly($query)
+    {
+        return $query->where('role', 'customer');
+    }
+
+    /**
+     * Scope lấy chỉ staff
+     */
+    public function scopeStaffOnly($query)
+    {
+        return $query->where('role', 'staff');
+    }
+
+    /**
+     * Scope lấy chỉ admin
+     */
+    public function scopeAdminOnly($query)
+    {
+        return $query->where('role', 'admin');
+    }
+
+    /**
+     * Scope tìm kiếm user
+     */
+    public function scopeSearch($query, $search)
+    {
+        if (empty($search)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($search) {
+            $q->where('username', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%")
+              ->orWhere('phone', 'like', "%{$search}%");
+        });
     }
 }
-
