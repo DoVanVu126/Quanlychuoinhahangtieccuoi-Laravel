@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class UserController extends Controller
@@ -156,5 +157,14 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User đã được xóa'], 200);
+    }
+    public function exportPDF()
+    {
+        $users = User::all();
+
+        $pdf = Pdf::loadView('pdf.users', compact('users'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('DanhSachUsers.pdf');
     }
 }
