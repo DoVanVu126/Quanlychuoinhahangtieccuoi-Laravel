@@ -43,6 +43,7 @@ Route::post('/users', [UserController::class, 'store']);
 Route::put('/users/{id}', [UserController::class, 'update']);
 Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
+
 // Xác thực người dùng 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -69,6 +70,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customers/{id}/details', [CustomerController::class, 'showDetails']); // Lấy chi tiết (Booking + Payment)
 });
 
+Route::get('/users/{id}', [UserController::class, 'show']);
+Route::get('/users/export/pdf', [UserController::class, 'exportPDF'])->name('users.export.pdf');
+
 // danh sách dịch vụ
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{id}', [ServiceController::class, 'show']);
@@ -78,6 +82,7 @@ Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
 Route::get('/restaurants/{id}/services', [ServiceController::class, 'getServicesByRestaurant']);
 
 //Food
+Route::get('/foods/export-pdf', [FoodController::class, 'exportPDF']);
 Route::get('/foods', [FoodController::class, 'index']);
 Route::get('/foods/{id}', [FoodController::class, 'show']);
 Route::post('/foods', [FoodController::class, 'store']);
@@ -85,6 +90,7 @@ Route::put('/foods/{id}', [FoodController::class, 'update']);
 Route::delete('/foods/{id}', [FoodController::class, 'destroy']);
 Route::get('/restaurants/{id}/foods', [FoodController::class, 'getFoodsByRestaurant']);
 Route::get('/food-types', [FoodTypeController::class, 'index']);
+
 
 // ================== API DANH SÁCH THÀNH PHỐ ==================
 Route::get('/restaurants/city', function () {

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class FoodController extends Controller
 {
@@ -148,7 +149,7 @@ class FoodController extends Controller
                         throw new \Exception('Không được upload file PDF vào trường ảnh.');
                     }
 
-                    $fileName = time().'_'.Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)).'.'.$file->getClientOriginalExtension();
+                    $fileName = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
                     $file->move(public_path('uploads/foods'), $fileName);
                     $data['image_url'] = 'uploads/foods/' . $fileName;
                 }
@@ -165,7 +166,7 @@ class FoodController extends Controller
             // khác
             return response()->json(['message' => 'Lỗi cơ sở dữ liệu.', 'detail' => $e->getMessage()], 500);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Lỗi khi lưu món ăn: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Lỗi khi lưu món ăn: ' . $e->getMessage()], 500);
         }
 
         // chuẩn hóa URL ảnh trước khi trả về
@@ -241,7 +242,7 @@ class FoodController extends Controller
                     }
 
                     $file = $request->file('image');
-                    $fileName = time().'_'.Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)).'.'.$file->getClientOriginalExtension();
+                    $fileName = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
                     $file->move(public_path('uploads/foods'), $fileName);
                     $data['image_url'] = 'uploads/foods/' . $fileName;
                 }
@@ -257,7 +258,7 @@ class FoodController extends Controller
             }
             return response()->json(['message' => 'Lỗi cơ sở dữ liệu.', 'detail' => $e->getMessage()], 500);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Lỗi khi cập nhật: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Lỗi khi cập nhật: ' . $e->getMessage()], 500);
         }
 
         if ($updated->image_url) {
@@ -288,7 +289,7 @@ class FoodController extends Controller
                 return true;
             });
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Lỗi khi xóa: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Lỗi khi xóa: ' . $e->getMessage()], 500);
         }
 
         if ($deleted === null) {
@@ -327,4 +328,13 @@ class FoodController extends Controller
         $paginated = $foods->toArray();
         return response()->json($paginated);
     }
+    public function exportPDF()
+{
+    $foods = Food::with(['restaurant', 'foodType'])->get();
+
+    $pdf = Pdf::loadView('pdf.foods', compact('foods'))
+        ->setPaper('a4', 'portrait');
+
+    return $pdf->download('DanhSachMonAn.pdf');
+}
 }
