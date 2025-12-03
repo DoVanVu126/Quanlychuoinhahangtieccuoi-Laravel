@@ -17,7 +17,7 @@ use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
 use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
-use App\Http\Controllers\AuthController; 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\CustomerController;
@@ -44,7 +44,7 @@ Route::put('/users/{id}', [UserController::class, 'update']);
 Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
 
-// Xác thực người dùng 
+// Xác thực người dùng
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
