@@ -17,6 +17,7 @@ use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
 use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
+use App\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,8 +29,8 @@ use App\Http\Controllers\MembershipController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-Route::post('/login', [UserController::class, 'login']);
-
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

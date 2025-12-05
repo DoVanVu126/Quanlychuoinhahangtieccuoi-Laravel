@@ -10,6 +10,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class UserController extends Controller
 {
+
+    /*
     public function login(Request $request)
     {
         $user = User::where('email', $request->email)->first();
@@ -26,6 +28,7 @@ class UserController extends Controller
             'token' => $token
         ]);
     }
+    */
 
     // 📋 Danh sách user (có tìm kiếm + phân trang)
     public function index(Request $request)
