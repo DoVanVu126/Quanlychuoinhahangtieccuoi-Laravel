@@ -153,44 +153,41 @@ public function paginated(Request $request)
     }
     public function search(Request $request)
     {
-        $keyword = trim($request->query('keyword', ''));
+        $keyword = trim((string)$request->query('keyword', ''));
 
-        // ✅ Nếu không có keyword: trả về nhà hàng nổi bật
+        // Nếu không có keyword: trả về nhà hàng nổi bật
         if ($keyword === '') {
-            return response()->json(
-                Restaurant::orderByDesc('star_rating')
-                    ->limit(50) // Giới hạn 50 kết quả cho nhẹ
-                    ->get()
-            );
+            $results = Restaurant::orderByDesc('star_rating')
+                ->limit(50)
+                ->get();
+
+            $results = $results->map(function ($r) {
+                if ($r->image_url && !preg_match('/^https?:\/\//', $r->image_url)) {
+                    $r->image_url = asset(trim($r->image_url, '/'));
+                }
+                return $r;
+            });
+
+            return response()->json($results);
         }
 
-        // ✅ Chuẩn hóa keyword: bỏ ký tự đặc biệt, chuyển chữ thường
-        $keyword = preg_replace('/[^a-zA-Z0-9\sÀ-ỹ]/u', '', strtolower($keyword));
+        // simple case-insensitive search on `name` with prefix-priority
+        $clean = preg_replace('/[^\p{L}0-9\s]/u', '', mb_strtolower($keyword));
+        $containsPattern = "%{$clean}%";
+        $prefixPattern = "{$clean}%";
 
-        // ✅ Tách các từ khóa nhỏ (ví dụ: "Phường 6 Hà Nội" → ["phường", "6", "hà", "nội"])
-        $keywords = preg_split('/\s+/', $keyword, -1, PREG_SPLIT_NO_EMPTY);
-
-        // ✅ Khởi tạo query
-        $query = Restaurant::query();
-
-        // ✅ Áp dụng tìm kiếm theo từng từ khóa
-        $query->where(function ($q) use ($keywords) {
-            foreach ($keywords as $word) {
-                $q->where(function ($sub) use ($word) {
-                    $sub->whereRaw('LOWER(name) LIKE ?', ["%{$word}%"])
-                        ->orWhereRaw('LOWER(ward) LIKE ?', ["%{$word}%"])
-                        ->orWhereRaw('LOWER(city) LIKE ?', ["%{$word}%"]);
-                });
-            }
-        });
-
-        // ✅ Sắp xếp thông minh hơn:
-        // 1. Đánh giá cao sao
-        // 2. Nhà hàng có tên chứa nguyên keyword được ưu tiên
-        $query->orderByDesc('star_rating')
-            ->orderByRaw("CASE WHEN LOWER(name) LIKE ? THEN 0 ELSE 1 END", ["%{$keyword}%"]);
-
-        $restaurants = $query->limit(100)->get(); // ✅ Giới hạn 100 kết quả
+        // Return rows where name contains the keyword, but order prefix matches first, then by star_rating
+        $restaurants = Restaurant::whereRaw('LOWER(name) LIKE ?', [$containsPattern])
+            ->orderByRaw("CASE WHEN LOWER(name) LIKE ? THEN 0 ELSE 1 END", [$prefixPattern])
+            ->orderByDesc('star_rating')
+            ->limit(100)
+            ->get()
+            ->map(function ($r) {
+                if ($r->image_url && !preg_match('/^https?:\/\//', $r->image_url)) {
+                    $r->image_url = asset(trim($r->image_url, '/'));
+                }
+                return $r;
+            });
 
         return response()->json($restaurants);
     }
