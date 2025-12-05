@@ -35,39 +35,19 @@ class User extends Authenticatable
         'created_at',
     ];
 
-<<<<<<< HEAD
-=======
-    // ✅ Ẩn password_hash khi trả về JSON
->>>>>>> hai/merge
     protected $hidden = [
         'password_hash',
     ];
 
-<<<<<<< HEAD
     // Để Laravel biết dùng password_hash làm mật khẩu
-=======
-    // ✅ Cast types
-    protected $casts = [
-        'created_at' => 'datetime',
-    ];
-
-    /**
-     * ✅ Ghi đè để Laravel biết tên cột mật khẩu
-     * Cần cho authentication
-     */
->>>>>>> hai/merge
     public function getAuthPassword()
     {
         return $this->password_hash;
     }
 
     /**
-<<<<<<< HEAD
      * Quan hệ với Customer
      * 1 User có thể có 1 Customer record (khi đặt tiệc)
-=======
-     * ✅ Relationship với Customer (nếu có)
->>>>>>> hai/merge
      */
     public function customer()
     {
@@ -75,7 +55,6 @@ class User extends Authenticatable
     }
 
     /**
-<<<<<<< HEAD
      * Kiểm tra user có phải là khách hàng đã đặt tiệc không
      */
     public function isCustomer()
@@ -121,20 +100,5 @@ class User extends Authenticatable
               ->orWhere('email', 'like', "%{$search}%")
               ->orWhere('phone', 'like', "%{$search}%");
         });
-=======
-     * ✅ Relationship với Bookings
-     */
-    public function bookings()
-    {
-        return $this->hasMany(Booking::class, 'user_id', 'user_id');
-    }
-
-    /**
-     * ✅ Relationship với Notifications
-     */
-    public function notifications()
-    {
-        return $this->hasMany(Notification::class, 'user_id', 'user_id');
->>>>>>> hai/merge
     }
 }

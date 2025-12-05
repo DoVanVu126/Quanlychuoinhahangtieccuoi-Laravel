@@ -19,9 +19,6 @@ use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
-
-use App\Http\Controllers\AuthController; 
-use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\CustomerController;
 
@@ -39,18 +36,6 @@ use App\Http\Controllers\ReviewController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-<<<<<<< HEAD
-=======
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
-
-// --- NHÓM QUÊN MẬT KHẨU (Public) ---
-Route::prefix('password-reset')->group(function () {
-    Route::post('/send-otp', [PasswordResetController::class, 'sendOtp']);
-    Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp']);
-    Route::post('/reset', [PasswordResetController::class, 'resetPassword']);
-});
->>>>>>> hai/merge
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
