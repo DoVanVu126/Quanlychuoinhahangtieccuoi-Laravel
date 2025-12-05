@@ -14,57 +14,63 @@ use Carbon\Carbon;
 
 class PasswordResetController extends Controller
 {
-    /**
-     * Bước 1: Gửi OTP qua email
-     */
+
+    // Gửi OTP qua email
     public function sendOtp(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
-        ]);
+        $validator = Validator::make($request->all(), ['email' => 'required|email|exists:users,email']);
+        if ($validator->fails()) return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
 
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-        }
-
-        $email = $request->email;
-        
-        // Tạo mã OTP 6 số
         $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         
-        // --- SỬA ĐỔI: Dùng bảng password_reset_tokens mặc định ---
-        
-        // Xóa token cũ
-        DB::table('password_reset_tokens')->where('email', $email)->delete();
-
-        // Lưu OTP mới (Lưu vào cột 'token', Hash để bảo mật)
-        DB::table('password_reset_tokens')->insert([
-            'email' => $email,
-            'token' => Hash::make($otpCode), // Dùng cột 'token' thay vì 'otp_code'
-            'created_at' => Carbon::now()    // Dùng 'created_at' để tính hạn
+        // Xóa cũ, thêm mới vào bảng OTPS
+        DB::table('password_reset_otps')->where('email', $request->email)->delete();
+        DB::table('password_reset_otps')->insert([
+            'email' => $request->email,
+            'otp_code' => Hash::make($otpCode),
+            'expires_at' => now()->addMinutes(5),
+            'created_at' => now() // Thêm dòng này để tránh lỗi nếu DB yêu cầu
         ]);
 
-        // Gửi email
         try {
-            Mail::to($email)->send(new OtpMail($otpCode));
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Mã OTP đã được gửi đến email của bạn',
-            ], 200);
+            \Illuminate\Support\Facades\Mail::to($request->email)->send(new \App\Mail\OtpMail($otpCode));
+            return response()->json(['success' => true, 'message' => 'Đã gửi mã OTP.'], 200);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Lỗi gửi mail: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Lỗi gửi mail.'], 500);
         }
     }
 
-    /**
-     * Bước 2: Xác thực OTP
-     */
+
+    //Xác thực OTP
+
     public function verifyOtp(Request $request)
     {
+        // ... (Logic cũ của bạn đã đúng, chỉ cần đảm bảo dùng 'otp_code') ...
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
-            'otp_code' => 'required|string|size:6',
+            'otp_code' => 'required|string|size:6'
+        ]);
+        if ($validator->fails()) return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+
+        $record = DB::table('password_reset_otps')->where('email', $request->email)->first();
+
+        if (!$record || !Hash::check($request->otp_code, $record->otp_code)) {
+            return response()->json(['success' => false, 'message' => 'Mã OTP không chính xác.'], 401);
+        }
+        
+        return response()->json(['success' => true, 'message' => 'OTP hợp lệ', 'reset_token' => $request->otp_code], 200);
+    }
+
+
+    //Đặt lại mật khẩu
+    
+    public function resetPassword(Request $request)
+    {
+        // 1. Sửa tên tham số thành 'otp_code' cho khớp Frontend
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'otp_code' => 'required|string|size:6', 
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         if ($validator->fails()) {
@@ -74,63 +80,24 @@ class PasswordResetController extends Controller
         $email = $request->email;
         $otpCode = $request->otp_code;
 
-        // --- SỬA ĐỔI: Tìm trong bảng password_reset_tokens ---
-        $record = DB::table('password_reset_tokens')->where('email', $email)->first();
+        // 2. Sửa tên bảng thành 'password_reset_otps' (thay vì tokens)
+        $record = DB::table('password_reset_otps')->where('email', $email)->first();
 
-        if (!$record) {
-            return response()->json(['success' => false, 'message' => 'Mã OTP không tồn tại'], 404);
+        // 3. Kiểm tra OTP (Dùng cột 'otp_code')
+        if (!$record || !Hash::check($otpCode, $record->otp_code)) {
+            return response()->json(['success' => false, 'message' => 'Mã OTP không hợp lệ hoặc đã hết hạn.'], 400);
         }
 
-        // --- SỬA ĐỔI: Kiểm tra hết hạn dựa trên created_at (ví dụ 5 phút) ---
-        if (Carbon::parse($record->created_at)->addMinutes(5)->isPast()) {
-            DB::table('password_reset_tokens')->where('email', $email)->delete();
-            return response()->json(['success' => false, 'message' => 'Mã OTP đã hết hạn'], 410);
-        }
-
-        // Kiểm tra khớp mã (So sánh Hash của cột token)
-        if (!Hash::check($otpCode, $record->token)) {
-            return response()->json(['success' => false, 'message' => 'Mã OTP không chính xác'], 401);
-        }
-
-        return response()->json(['success' => true, 'message' => 'OTP hợp lệ', 'reset_token' => $otpCode], 200);
-    }
-
-    /**
-     * Bước 3: Đặt lại mật khẩu
-     */
-    public function resetPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'otp' => 'required|string|size:6', // Frontend gửi lên với tên key là 'otp' hoặc 'otp_code' tùy bạn sửa, ở đây tôi để 'otp' cho khớp logic verify
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-        
-        // Lưu ý: Ở Bước 2 frontend trả về reset_token chính là otp_code.
-        // Nên ở bước này request sẽ gửi lên: email, otp (là cái reset_token), password.
-
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-        }
-
-        $email = $request->email;
-        $otpCode = $request->otp; // Frontend gửi lên key là 'otp' (giá trị là reset_token lưu trong localStorage)
-
-        // Kiểm tra lại lần cuối
-        $record = DB::table('password_reset_tokens')->where('email', $email)->first();
-
-        if (!$record || !Hash::check($otpCode, $record->token)) {
-            return response()->json(['success' => false, 'message' => 'Yêu cầu không hợp lệ'], 400);
-        }
-
-        // Cập nhật mật khẩu
+        // 4. Cập nhật mật khẩu (Dùng password_hash)
         $user = User::where('email', $email)->first();
-        $user->update([
-            'password_hash' => Hash::make($request->password)
-        ]);
+        if ($user) {
+            $user->update([
+                'password_hash' => Hash::make($request->password)
+            ]);
+        }
 
-        // Xóa token đã dùng
-        DB::table('password_reset_tokens')->where('email', $email)->delete();
+        // 5. Xóa OTP đã dùng
+        DB::table('password_reset_otps')->where('email', $email)->delete();
 
         return response()->json(['success' => true, 'message' => 'Đặt lại mật khẩu thành công'], 200);
     }
