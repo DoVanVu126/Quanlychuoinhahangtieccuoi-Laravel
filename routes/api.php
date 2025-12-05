@@ -17,6 +17,7 @@ use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
 use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
+use App\Http\Controllers\ReviewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -177,3 +178,10 @@ Route::get('/membership/{user_id}', [MembershipController::class, 'show'])->name
 
 // Cập nhật membership sau booking confirmed
 Route::post('/membership/booking/{booking_id}', [MembershipController::class, 'updateAfterBooking'])->name('membership.updateAfterBooking');
+
+
+// đánh giá
+Route::get('/reviews/{restaurantId}', [ReviewController::class, 'index']);  // GET
+Route::post('/reviews', [ReviewController::class, 'store']);                // POST
+Route::put('/reviews/{id}', [ReviewController::class, 'update']);           // PUT
+Route::delete('/reviews/{id}', [ReviewController::class, 'destroy']);       // DELETE
