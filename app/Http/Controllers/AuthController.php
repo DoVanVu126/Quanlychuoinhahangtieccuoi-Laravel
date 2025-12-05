@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers; 
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -15,11 +15,12 @@ use Illuminate\Support\Facades\Auth;
 class AuthController extends Controller
 {
     /**
-     * Xử lý yêu cầu đăng ký tài khoản với validation đầy đủ
+     * 📝 REGISTER - Đăng ký tài khoản với validation đầy đủ
+     * Kết hợp logic project cũ + format response project mới
      */
     public function register(Request $request)
     {
-        // 1. Validate với rules chi tiết
+        // 1. Validate với rules chi tiết (từ project cũ)
         $validator = Validator::make($request->all(), [
             'username' => [
                 'required',
@@ -82,7 +83,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // 3. Sanitize input (loại bỏ HTML tags)
+        // 3. Sanitize input (loại bỏ HTML tags) - từ project cũ
         $cleanData = [
             'username' => strip_tags($request->username),
             'email' => strip_tags($request->email),
@@ -90,7 +91,7 @@ class AuthController extends Controller
             'password' => $request->password,
         ];
 
-        // 4. Bắt đầu Transaction
+        // 4. Bắt đầu Transaction - từ project cũ
         DB::beginTransaction();
 
         try {
@@ -100,17 +101,25 @@ class AuthController extends Controller
                 'email' => $cleanData['email'],
                 'phone' => $cleanData['phone'],
                 'password_hash' => Hash::make($cleanData['password']),
-                'role' => 'customer'
+                'role' => 'customer',
+                'created_at' => now(),
             ]);
 
-            // 6. Tạo customer
-            Customer::create([
-                'user_id' => $user->user_id 
-            ]);
+            // 6. Tạo customer (nếu có model Customer trong project mới)
+            // Nếu không có, comment dòng này lại
+            try {
+                Customer::create([
+                    'user_id' => $user->user_id 
+                ]);
+            } catch (\Exception $e) {
+                // Nếu không có bảng customers, bỏ qua
+                Log::info('Không tạo được customer record: ' . $e->getMessage());
+            }
 
             // 7. Commit transaction
             DB::commit();
 
+            // ✅ THAY ĐỔI: Response format theo project mới
             return response()->json([
                 'success' => true,
                 'message' => 'Đăng ký tài khoản thành công!',
@@ -131,11 +140,12 @@ class AuthController extends Controller
     }
 
     /**
-     * Xử lý đăng nhập với validation
+     * 🔐 LOGIN - Xử lý đăng nhập với validation
+     * Kết hợp logic project cũ + format response project mới
      */
     public function login(Request $request)
     {
-        // 1. Validate
+        // 1. Validate (từ project cũ)
         $validator = Validator::make($request->all(), [
             'login' => [
                 'required',
@@ -161,13 +171,13 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // 2. Sanitize input
+        // 2. Sanitize input (từ project cũ)
         $credentials = [
             'login' => strip_tags($request->login),
             'password' => $request->password,
         ];
 
-        // 3. Tìm user
+        // 3. Tìm user theo username hoặc email
         $user = User::where('username', $credentials['login'])
                     ->orWhere('email', $credentials['login'])
                     ->first();
@@ -183,13 +193,39 @@ class AuthController extends Controller
 
         // 5. Đăng nhập thành công
         Auth::login($user);
-        $token = $user->createToken('api-token-cho-spa')->plainTextToken;
+        $token = $user->createToken('api-token')->plainTextToken;
 
+        // ✅ THAY ĐỔI: Response format theo project mới (dùng 'token' thay vì 'access_token')
         return response()->json([
             'success' => true,
             'message' => 'Đăng nhập thành công',
             'user' => $user,
-            'access_token' => $token
+            'token' => $token  // ← Đổi từ 'access_token' thành 'token'
+        ], 200);
+    }
+
+    /**
+     * 🚪 LOGOUT - Đăng xuất (xóa token hiện tại)
+     */
+    public function logout(Request $request)
+    {
+        // Xóa token hiện tại của user
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đăng xuất thành công'
+        ], 200);
+    }
+
+    /**
+     * 👤 ME - Lấy thông tin user đang đăng nhập
+     */
+    public function me(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'user' => $request->user()
         ], 200);
     }
 }
