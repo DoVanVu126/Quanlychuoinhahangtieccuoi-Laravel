@@ -5,115 +5,145 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
     /**
-     * 1. Lấy danh sách khách hàng (ĐÃ ĐẶT TIỆC)
-     * Kèm tìm kiếm & phân trang
+     * Lấy danh sách khách hàng cho trang Customer.vue
      */
     public function index(Request $request)
     {
-        $perPage = $request->input('per_page', 10);
-        $search = $request->input('search');
+        // 1. Khởi tạo query và Eager Load quan hệ 'user' để tránh N+1 Query
+        $query = Customer::with('user');
 
-        // QUERY BUILDER:
-        // 1. Từ bảng customers
-        // 2. JOIN với users (để lấy tên, email...)
-        // 3. JOIN với bookings (để lọc chỉ lấy người ĐÃ ĐẶT)
-        $query = Customer::join('users', 'customers.user_id', '=', 'users.user_id')
-            ->join('bookings', 'customers.customer_id', '=', 'bookings.customer_id') 
-            ->select(
-                'customers.customer_id',
-                'customers.user_id',
-                'customers.created_at', 
-                'users.username',
-                'users.email',
-                'users.phone',
-                'users.full_name',
-                'users.address',
-                'users.image_url',
-                'users.role',
-                'users.created_at as user_created_at'
-            )
-            ->distinct(); // Quan trọng: Loại bỏ trùng lặp (nếu khách đặt 2 lần)
-
-        // Xử lý Tìm kiếm
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('users.username', 'LIKE', "%{$search}%")
-                  ->orWhere('users.email', 'LIKE', "%{$search}%")
-                  ->orWhere('users.full_name', 'LIKE', "%{$search}%")
-                  ->orWhere('users.phone', 'LIKE', "%{$search}%");
+        // 2. Xử lý tìm kiếm
+        // Vue gửi params: ?search=...
+        if ($search = $request->input('search')) {
+            // Tìm kiếm trong bảng users dựa trên quan hệ
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('username', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhere('phone', 'LIKE', "%{$search}%")
+                  ->orWhere('full_name', 'LIKE', "%{$search}%");
             });
         }
 
-        // Sắp xếp: Ưu tiên khách hàng mới đặt gần đây nhất
-        // (Lưu ý: cần cẩn thận khi order với distinct, nên order theo customer.created_at cho an toàn)
-        $customers = $query->orderBy('customers.created_at', 'desc')->paginate($perPage);
+        // 3. Sắp xếp: Khách hàng mới nhất lên đầu
+        $query->orderBy('created_at', 'desc');
+
+        // 4. Phân trang
+        // Vue gửi params: ?per_page=10
+        $perPage = $request->input('per_page', 10);
+        $customers = $query->paginate($perPage);
+
+        // 5. Transform dữ liệu (QUAN TRỌNG)
+        // Biến đổi cấu trúc nested (customer.user.email) thành cấu trúc phẳng (customer.email)
+        // để khớp với code map() bên Vue.
+        $customers->getCollection()->transform(function ($customer) {
+            return [
+                'customer_id' => $customer->customer_id,
+                'user_id'     => $customer->user_id,
+                'created_at'  => $customer->created_at,
+                // Lấy thông tin từ bảng user nhét ra ngoài
+                'username'    => $customer->user->username ?? 'N/A',
+                'full_name'   => $customer->user->full_name ?? '',
+                'email'       => $customer->user->email ?? '',
+                'phone'       => $customer->user->phone ?? '',
+                'image_url'   => $customer->user->image_url ?? '',
+                'address'     => $customer->user->address ?? '',
+            ];
+        });
 
         return response()->json($customers);
     }
 
     /**
-     * 2. Lấy chi tiết khách hàng + Lịch sử đặt tiệc + Thanh toán
+     * Xem chi tiết khách hàng (Cho function goToCustomerDetail)
      */
-    public function showDetails($id)
+    public function show($id)
     {
-        // ... (Phần lấy $customer giữ nguyên) ...
-        // ... (Phần lấy $bookings giữ nguyên) ...
+        $customer = Customer::with(['user', 'bookings'])->findOrFail($id);
 
-        // A. Tìm thông tin khách hàng
-        $customer = Customer::join('users', 'customers.user_id', '=', 'users.user_id')
-            ->where('customers.customer_id', $id)
-            ->select(
-                'customers.customer_id',
-                'customers.user_id',
-                'users.username',
-                'users.email',
-                'users.phone',
-                'users.full_name'
-            )
-            ->first();
+        // Trả về dữ liệu chi tiết kèm lịch sử đặt tiệc
+        return response()->json([
+            'customer_info' => [
+                'customer_id' => $customer->customer_id,
+                'full_name'   => $customer->user->full_name,
+                'email'       => $customer->user->email,
+                'phone'       => $customer->user->phone,
+                'address'     => $customer->user->address,
+                'image_url'   => $customer->user->image_url,
+            ],
+            'bookings' => $customer->bookings // Danh sách đơn đặt tiệc
+        ]);
+    }
 
-        if (!$customer) {
-            return response()->json(['message' => 'Khách hàng không tồn tại'], 404);
-        }
+    //Xem chi tiết khách hàng: đặt tiệc + thanh toán
+    public function getDetails($id)
+    {
+        // 1. Lấy thông tin Customer & User
+        // Sử dụng findOrFail để trả về 404 nếu không tìm thấy
+        $customer = Customer::with('user')->findOrFail($id);
 
-        // B. Lấy lịch sử đặt tiệc (Bookings)
-        $bookings = Booking::leftJoin('halls', 'bookings.hall_id', '=', 'halls.hall_id')
-            ->where('bookings.customer_id', $id)
-            ->select(
-                'bookings.booking_id as id',
-                'bookings.event_type',
-                'bookings.event_date',
-                'bookings.status',
-                'bookings.price as total_amount',
-                'halls.name as hall_name'
-            )
-            ->orderBy('bookings.created_at', 'desc')
+        // 2. Lấy danh sách Bookings của khách này
+        // Eager load 'hall' để lấy tên sảnh hiển thị lên Vue
+        $bookingsData = Booking::with('hall')
+            ->where('customer_id', $id)
+            ->orderBy('event_date', 'desc')
             ->get();
 
-        // C. Lấy lịch sử thanh toán (Payments) - CẬP NHẬT PHẦN NÀY
-        $bookingIds = $bookings->pluck('id'); // Lấy danh sách booking_id
+        // 3. Map dữ liệu Booking (Backend -> Frontend)
+        // Vue đang mong đợi các trường: id, event_type, hall_name, total_amount...
+        $bookings = $bookingsData->map(function ($b) {
+            return [
+                'id'           => $b->booking_id,
+                'event_type'   => $b->event_type,
+                'event_date'   => $b->event_date, 
+                'hall_name'    => $b->hall ? $b->hall->name : 'Chưa chọn sảnh',
+                'status'       => $b->status,
+                
+                // Mapping quan trọng: DB là 'price', Vue đang gọi là 'total_amount'
+                'total_amount' => $b->price, 
+            ];
+        });
+
+        // 4. Lấy danh sách Payments
+        // Tìm tất cả payment thuộc các booking của khách này
+        $bookingIds = $bookingsData->pluck('booking_id');
         
         $payments = Payment::whereIn('booking_id', $bookingIds)
-            ->select(
-                'payment_id as id',
-                'transaction_code',
-                'booking_id',
-                'total_amount as amount',       // <-- Đổi tên cho khớp Frontend
-                'payment_method',
-                'payment_date',
-                'payment_status as status'      // <-- Đổi tên cho khớp Frontend
-            )
             ->orderBy('payment_date', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'id'               => $p->payment_id,
+                    'booking_id'       => $p->booking_id,
+                    'transaction_code' => $p->transaction_code,
+                    
+                    // Mapping quan trọng: DB là 'total_amount', Vue đang gọi là 'amount'
+                    'amount'           => $p->total_amount, 
+                    
+                    'payment_method'   => $p->payment_method,
+                    'payment_date'     => $p->payment_date,
+                    'status'           => $p->payment_status // paid/unpaid/partial
+                ];
+            });
 
+        // 5. Chuẩn bị thông tin Customer (Làm phẳng dữ liệu user)
+        $customerInfo = [
+            'id'        => $customer->customer_id,
+            'username'  => $customer->user->username ?? '',
+            'email'     => $customer->user->email ?? '',
+            'phone'     => $customer->user->phone ?? '',
+            'address'   => $customer->user->address ?? '',
+            'full_name' => $customer->user->full_name ?? 'Chưa cập nhật tên',
+        ];
+
+        // 6. Trả về JSON tổng hợp
         return response()->json([
-            'customer' => $customer,
+            'customer' => $customerInfo,
             'bookings' => $bookings,
             'payments' => $payments
         ]);
