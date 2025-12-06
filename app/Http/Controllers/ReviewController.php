@@ -7,37 +7,56 @@ use Illuminate\Http\Request;
 
 class ReviewController extends Controller
 {
-    // Lấy danh sách review của 1 nhà hàng
-    public function index($restaurantId)
-    {
-        $reviews = Review::where('restaurant_id', $restaurantId)
-            ->with('user:user_id,username,image_url') // lấy username + avatar
-            ->orderBy('review_id', 'DESC')
-            ->get()
-            ->map(function ($review) {
-                return [
-                    'review_id' => $review->review_id,
-                    'restaurant_id' => $review->restaurant_id,
-                    'user_id' => $review->user_id,
-                    'user_name' => $review->user->username ?? 'Người dùng',
-                    // avatar trả về URL đầy đủ
-                    'avatar' => $review->user && $review->user->image_url
-                        ? asset($review->user->image_url)
-                        : asset('img/default-avatar.png'),
-                    'star_rating' => $review->star_rating,
-                    'comment' => $review->comment,
-                    'created_at' => $review->created_at,
-                    'updated_at' => $review->updated_at,
-                ];
-            });
+    private $bad_words = ['xấu', 'tệ', 'dở', 'ghét', 'bẩn'];
 
-        return response()->json([
-            'status' => true,
-            'data' => $reviews
-        ]);
+    private function censor($text)
+    {
+        foreach ($this->bad_words as $word) {
+            $pattern = '/\b' . preg_quote($word, '/') . '\b/i';
+            $text = preg_replace($pattern, '***', $text);
+        }
+        return $text;
     }
 
-    // Thêm đánh giá
+    // GET /reviews hoặc /reviews/{restaurantId}
+   public function index(Request $request, $restaurantId = null)
+{
+    $query = Review::with(['user:user_id,username,image_url', 'restaurant:restaurant_id,name']);
+
+    // lọc theo nhà hàng (frontend)
+    if ($restaurantId) {
+        $query->where('restaurant_id', $restaurantId);
+    }
+
+    // lọc theo user hoặc keyword (admin)
+    if ($request->has('user_id')) $query->where('user_id', $request->user_id);
+    if ($request->has('keyword')) $query->where('comment', 'like', "%{$request->keyword}%");
+
+    // phân trang
+    $perPage = $request->get('per_page', 10); // default 10
+    $reviews = $query->orderBy('review_id', 'DESC')->paginate($perPage);
+
+    // chỉnh dữ liệu trả về
+    $reviews->getCollection()->transform(function ($review) {
+        return [
+            'review_id' => $review->review_id,
+            'restaurant_id' => $review->restaurant_id,
+            'restaurant_name' => $review->restaurant->name ?? 'Nhà hàng',
+            'user_id' => $review->user_id,
+            'user_name' => $review->user->username ?? 'Người dùng',
+            'avatar' => $review->user && $review->user->image_url
+                ? asset($review->user->image_url)
+                : asset('img/default-avatar.png'),
+            'star_rating' => $review->star_rating,
+            'comment' => $this->censor($review->comment),
+            'created_at' => $review->created_at,
+            'updated_at' => $review->updated_at,
+        ];
+    });
+
+    return response()->json($reviews);
+}
+    // POST /reviews
     public function store(Request $request)
     {
         $request->validate([
@@ -47,73 +66,60 @@ class ReviewController extends Controller
             'comment' => 'nullable|string|max:255'
         ]);
 
+        $comment = $this->censor($request->comment ?? '');
+
         $review = Review::create([
             'restaurant_id' => $request->restaurant_id,
             'user_id' => $request->user_id,
             'star_rating' => $request->star_rating,
-            'comment' => $request->comment
+            'comment' => $comment
         ]);
 
-        $review->load('user:user_id,username,image_url');
+        $review->load(['user:user_id,username,image_url', 'restaurant:restaurant_id,name']);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Đánh giá thành công!',
-            'data' => [
-                'review_id' => $review->review_id,
-                'restaurant_id' => $review->restaurant_id,
-                'user_id' => $review->user_id,
-                'user_name' => $review->user->username ?? 'Người dùng',
-                'avatar' => $review->user && $review->user->image_url
-                    ? asset($review->user->image_url)
-                    : asset('img/default-avatar.png'),
-                'star_rating' => $review->star_rating,
-                'comment' => $review->comment,
-                'created_at' => $review->created_at,
-                'updated_at' => $review->updated_at,
-            ]
-        ]);
+        return response()->json(['status' => true, 'data' => $this->transformReview($review)]);
     }
 
-    // Sửa đánh giá
+    // PUT /reviews/{id}
     public function update(Request $request, $id)
     {
         $review = Review::findOrFail($id);
 
+        $comment = $this->censor($request->comment ?? '');
+
         $review->update([
             'star_rating' => $request->star_rating,
-            'comment' => $request->comment
+            'comment' => $comment
         ]);
 
-        $review->load('user:user_id,username,image_url');
+        $review->load(['user:user_id,username,image_url', 'restaurant:restaurant_id,name']);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Cập nhật đánh giá thành công!',
-            'data' => [
-                'review_id' => $review->review_id,
-                'restaurant_id' => $review->restaurant_id,
-                'user_id' => $review->user_id,
-                'user_name' => $review->user->username ?? 'Người dùng',
-                'avatar' => $review->user && $review->user->image_url
-                    ? asset($review->user->image_url)
-                    : asset('img/default-avatar.png'),
-                'star_rating' => $review->star_rating,
-                'comment' => $review->comment,
-                'created_at' => $review->created_at,
-                'updated_at' => $review->updated_at,
-            ]
-        ]);
+        return response()->json(['status' => true, 'data' => $this->transformReview($review)]);
     }
 
-    // Xóa đánh giá
+    // DELETE /reviews/{id}
     public function destroy($id)
     {
         Review::where('review_id', $id)->delete();
+        return response()->json(['status' => true, 'message' => 'Xóa đánh giá thành công!']);
+    }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Xóa đánh giá thành công!'
-        ]);
+    // Chuyển đổi dữ liệu review
+    private function transformReview($review)
+    {
+        return [
+            'review_id' => $review->review_id,
+            'restaurant_id' => $review->restaurant_id,
+            'restaurant_name' => $review->restaurant->name ?? 'Nhà hàng',
+            'user_id' => $review->user_id,
+            'user_name' => $review->user->username ?? 'Người dùng',
+            'avatar' => $review->user && $review->user->image_url
+                ? asset($review->user->image_url)
+                : asset('img/default-avatar.png'),
+            'star_rating' => $review->star_rating,
+            'comment' => $this->censor($review->comment),
+            'created_at' => $review->created_at,
+            'updated_at' => $review->updated_at,
+        ];
     }
 }
