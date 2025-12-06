@@ -69,9 +69,9 @@ class UserController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|min:6',
             'role' => 'required|in:admin,staff,customer',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|digits_between:10,12',
             'address' => 'nullable|string|max:255',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
         // Xử lý file ảnh nếu có
@@ -88,7 +88,7 @@ class UserController extends Controller
 
         $user = User::create($validated);
 
-        if ($user->image_url) {
+        if (!empty($user->image_url)) {
             $user->image_url = asset($user->image_url);
         }
 
@@ -105,9 +105,9 @@ class UserController extends Controller
             'email' => 'sometimes|required|email|unique:users,email,' . $id . ',user_id',
             'password' => 'nullable|min:6',
             'role' => 'sometimes|required|in:admin,staff,customer',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|digits_between:10,12',
             'address' => 'nullable|string|max:255',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
         // Xử lý ảnh
@@ -129,7 +129,7 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        if ($user->image_url) {
+        if (!empty($user->image_url)) {
             $user->image_url = asset($user->image_url);
         }
 
