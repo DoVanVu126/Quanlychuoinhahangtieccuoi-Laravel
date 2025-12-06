@@ -19,7 +19,7 @@ use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
-use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CustomerController;
 
 

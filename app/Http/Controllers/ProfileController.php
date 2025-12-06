@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rules\Password;
 use App\Models\User;
 
 class ProfileController extends Controller
@@ -174,10 +175,7 @@ class ProfileController extends Controller
         }
     }
 
-    /**
-     * DELETE /api/profile
-     * Xóa tài khoản
-     */
+    //Xóa tài khoản
     public function destroy()
     {
         $user = Auth::user();
