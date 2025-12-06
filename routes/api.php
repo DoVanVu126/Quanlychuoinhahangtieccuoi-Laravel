@@ -19,7 +19,7 @@ use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
-use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CustomerController;
 
 
@@ -68,10 +68,10 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Customer routes
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/customers', [CustomerController::class, 'index']); // Lấy danh sách
-    Route::get('/customers/{id}/details', [CustomerController::class, 'showDetails']); // Lấy chi tiết (Booking + Payment)
-});
+Route::get('/customers', [CustomerController::class, 'index']);
+Route::get('/customers/{id}', [CustomerController::class, 'show']);
+// Route lấy chi tiết khách hàng
+Route::get('/customers/{id}/details', [CustomerController::class, 'getDetails']);
 
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/users/export/pdf', [UserController::class, 'exportPDF'])->name('users.export.pdf');
