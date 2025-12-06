@@ -181,7 +181,11 @@ Route::post('/membership/booking/{booking_id}', [MembershipController::class, 'u
 
 
 // đánh giá
-Route::get('/reviews/{restaurantId}', [ReviewController::class, 'index']);  // GET
-Route::post('/reviews', [ReviewController::class, 'store']);                // POST
-Route::put('/reviews/{id}', [ReviewController::class, 'update']);           // PUT
-Route::delete('/reviews/{id}', [ReviewController::class, 'destroy']);       // DELETE
+// API chi tiết nhà hàng (frontend)
+Route::get('/reviews/{restaurantId}', [ReviewController::class, 'index']);
+
+// Admin review
+Route::get('/reviews', [ReviewController::class, 'index']); // paginate + filter
+Route::post('/reviews', [ReviewController::class, 'store']);
+Route::put('/reviews/{id}', [ReviewController::class, 'update']);
+Route::delete('/reviews/{id}', [ReviewController::class, 'destroy']);
