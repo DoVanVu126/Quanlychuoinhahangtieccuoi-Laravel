@@ -5,19 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Hall;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class HallController extends Controller
 {
-    // 📋 Danh sách sảnh có phân trang (10 sảnh / trang)
+    // 📋 Danh sách sảnh
     public function index(Request $request)
     {
         $page = $request->query('page', 1);
-        $search = $request->query('search', null);
+        $search = $request->query('search');
 
         $query = Hall::with('restaurant');
 
-        if ($search) {
-            $search = trim($search);
+        if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
@@ -26,12 +26,11 @@ class HallController extends Controller
 
         $halls = $query->paginate(10, ['*'], 'page', $page);
 
-        // Thêm domain vào đường dẫn ảnh (nếu có)
         $halls->setCollection(
             $halls->getCollection()->map(function ($hall) {
                 if ($hall->image_url && !preg_match('/^https?:\/\//', $hall->image_url)) {
                     $hall->image_url = asset(trim($hall->image_url, '/'));
-                } else if (!$hall->image_url) {
+                } elseif (!$hall->image_url) {
                     $hall->image_url = asset('images/default-service.png');
                 }
                 return $hall;
@@ -41,90 +40,123 @@ class HallController extends Controller
         return response()->json($halls);
     }
 
-    // 📋 Chi tiết 1 sảnh
+    // 📋 Chi tiết
     public function show($id)
     {
         $hall = Hall::with('restaurant')->where('hall_id', $id)->first();
-
         if (!$hall) {
-            return response()->json(['message' => 'Hall not found'], 404);
+            return response()->json(['message' => 'Không tìm thấy sảnh'], 404);
         }
 
         if ($hall->image_url && !preg_match('/^https?:\/\//', $hall->image_url)) {
             $hall->image_url = asset(trim($hall->image_url, '/'));
-        } else if (!$hall->image_url) {
+        } elseif (!$hall->image_url) {
             $hall->image_url = asset('images/default-service.png');
         }
 
         return response()->json($hall);
     }
 
-    // ➕ Thêm mới sảnh
+    // ➕ Thêm sảnh
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'restaurant_id' => 'required|integer',
-            'name' => 'required|string|max:100|unique:halls,name',
-            'capacity' => 'nullable|integer',
-            'price' => 'nullable|numeric|min:0',
-            'description' => 'nullable|string',
-            'status' => 'required|string|in:available,unavailable,maintenance',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:10240',
+            'name'          => 'required|string|max:100|unique:halls,name',
+            'capacity'      => 'nullable|integer|min:1',
+            'price'         => 'nullable|numeric|min:0',
+            'description'   => 'nullable|string|max:500',
+            'status'        => 'required|in:available,unavailable,maintenance',
+            'image'         => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:10240',
+        ], [
+            'restaurant_id.required' => 'Vui lòng chọn nhà hàng',
+            'name.required'          => 'Tên sảnh không được để trống',
+            'name.unique'            => 'Tên sảnh đã tồn tại',
+            'capacity.integer'       => 'Sức chứa phải là số nguyên',
+            'price.numeric'          => 'Giá phải là số',
+            'status.in'              => 'Trạng thái không hợp lệ',
+            'image.image'            => 'File phải là hình ảnh',
         ]);
 
-        // Upload ảnh nếu có
-        if ($request->hasFile('image')) {
-            $validated['image_url'] = $this->handleImageUpload($request->file('image'), 'uploads/halls');
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors'  => $validator->errors()
+            ], 422);
         }
 
-        $hall = Hall::create($validated);
+        // Upload ảnh
+        $data = $validator->validated();
+        if ($request->hasFile('image')) {
+            $data['image_url'] = $this->handleImageUpload($request->file('image'), 'uploads/halls');
+        }
 
-        if ($hall->image_url) $hall->image_url = asset($hall->image_url);
-        else $hall->image_url = asset('images/default-service.png');
+        $hall = Hall::create($data);
 
-        return response()->json($hall, 201);
+        $hall->image_url = $hall->image_url
+            ? asset($hall->image_url)
+            : asset('images/default-service.png');
+
+        return response()->json([
+            'message' => 'Thêm sảnh thành công',
+            'data'    => $hall
+        ], 201);
     }
 
-    // ✏️ Cập nhật sảnh
+    // ✏️ Cập nhật
     public function update(Request $request, $id)
     {
         $hall = Hall::where('hall_id', $id)->first();
+        if (!$hall) {
+            return response()->json(['message' => 'Không tìm thấy sảnh'], 404);
+        }
 
-        if (!$hall) return response()->json(['message' => 'Hall not found'], 404);
-
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'restaurant_id' => 'required|integer',
-            'name' => 'required|string|max:100|unique:halls,name,' . $id . ',hall_id',
-            'capacity' => 'nullable|integer',
-            'price' => 'nullable|numeric|min:0',
-            'description' => 'nullable|string',
-            'status' => 'required|string|in:available,unavailable,maintenance',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:10240',
+            'name'          => 'required|string|max:100|unique:halls,name,' . $id . ',hall_id',
+            'capacity'      => 'nullable|integer|min:1',
+            'price'         => 'nullable|numeric|min:0',
+            'description'   => 'nullable|string|max:500',
+            'status'        => 'required|in:available,unavailable,maintenance',
+            'image'         => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:10240',
         ]);
 
-        // Nếu có ảnh mới
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        // Xử lý ảnh mới
         if ($request->hasFile('image')) {
-            // Xóa ảnh cũ
             if ($hall->image_url && file_exists(public_path($hall->image_url))) {
                 @unlink(public_path($hall->image_url));
             }
-            $validated['image_url'] = $this->handleImageUpload($request->file('image'), 'uploads/halls');
+            $data['image_url'] = $this->handleImageUpload($request->file('image'), 'uploads/halls');
         }
 
-        $hall->update($validated);
+        $hall->update($data);
 
-        if ($hall->image_url) $hall->image_url = asset($hall->image_url);
-        else $hall->image_url = asset('images/default-service.png');
+        $hall->image_url = $hall->image_url
+            ? asset($hall->image_url)
+            : asset('images/default-service.png');
 
-        return response()->json($hall);
+        return response()->json([
+            'message' => 'Cập nhật sảnh thành công',
+            'data'    => $hall
+        ]);
     }
 
-    // 🗑️ Xóa sảnh
+    // 🗑️ Xóa
     public function destroy($id)
     {
         $hall = Hall::where('hall_id', $id)->first();
-
-        if (!$hall) return response()->json(['message' => 'Hall not found'], 404);
+        if (!$hall) {
+            return response()->json(['message' => 'Không tìm thấy sảnh'], 404);
+        }
 
         if ($hall->image_url && file_exists(public_path($hall->image_url))) {
             @unlink(public_path($hall->image_url));
@@ -132,17 +164,22 @@ class HallController extends Controller
 
         $hall->delete();
 
-        return response()->json(['message' => 'Đã xóa sảnh thành công']);
+        return response()->json([
+            'message' => 'Đã xóa sảnh thành công'
+        ]);
     }
 
     // 🔹 Lấy sảnh theo nhà hàng
     public function getHallsByRestaurant($restaurant_id)
     {
-        $halls = DB::table('halls')->where('restaurant_id', $restaurant_id)->get();
+        $halls = DB::table('halls')
+            ->where('restaurant_id', $restaurant_id)
+            ->get();
+
         return response()->json($halls);
     }
 
-    // 🔹 Hàm xử lý upload ảnh, tạo folder nếu chưa có
+    // 🔹 Upload hình
     private function handleImageUpload($file, $folder)
     {
         $uploadPath = public_path($folder);
