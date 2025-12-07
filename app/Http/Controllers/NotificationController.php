@@ -5,18 +5,23 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Notification;
 use App\Events\NewNotificationEvent;
+use Illuminate\Support\Facades\Auth; // Thêm Facade Auth
 
 class NotificationController extends Controller
 {
-    // Lấy danh sách thông báo theo user
-    public function index($user_id)
+    // Lấy danh sách thông báo (Tự động lấy theo User đang đăng nhập)
+    public function index()
     {
-        return Notification::where('user_id', $user_id)
+        // ✅ SỬA: Lấy ID từ Auth thay vì tham số URL
+        $userId = Auth::id(); 
+
+        return Notification::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
+            ->limit(20) // Giới hạn 20 thông báo mới nhất để nhẹ API
             ->get();
     }
 
-    // Tạo thông báo mới
+    // Tạo thông báo mới (Cập nhật thêm support_ticket_id)
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -26,6 +31,7 @@ class NotificationController extends Controller
             'type' => 'nullable|string',
             'booking_id' => 'nullable|integer',
             'promotion_id' => 'nullable|integer',
+            'support_ticket_id' => 'nullable|integer', // ✅ THÊM DÒNG NÀY
         ]);
 
         $notification = Notification::create($data);
@@ -39,7 +45,11 @@ class NotificationController extends Controller
     // Đánh dấu 1 thông báo đã đọc
     public function markRead($id)
     {
-        $n = Notification::findOrFail($id);
+        // ✅ SỬA: Chỉ cho phép đánh dấu thông báo của chính mình
+        $n = Notification::where('user_id', Auth::id())
+                         ->where('id', $id)
+                         ->firstOrFail();
+                         
         $n->is_read = 1;
         $n->save();
 
@@ -47,9 +57,10 @@ class NotificationController extends Controller
     }
 
     // Đánh dấu tất cả đã đọc
-    public function markAllRead($user_id)
+    public function markAllRead()
     {
-        Notification::where('user_id', $user_id)->update(['is_read' => 1]);
+        $userId = Auth::id(); // ✅ SỬA: Lấy từ Auth
+        Notification::where('user_id', $userId)->update(['is_read' => 1]);
 
         return response()->json(['success' => true]);
     }
@@ -57,15 +68,19 @@ class NotificationController extends Controller
     // Xóa 1 thông báo
     public function delete($id)
     {
-        Notification::where('id', $id)->delete();
+        // ✅ SỬA: Chỉ xóa thông báo của chính mình
+        Notification::where('user_id', Auth::id())
+                    ->where('id', $id)
+                    ->delete();
 
         return response()->json(['success' => true]);
     }
 
     // Xóa tất cả thông báo
-    public function deleteAll($user_id)
+    public function deleteAll()
     {
-        Notification::where('user_id', $user_id)->delete();
+        $userId = Auth::id(); // ✅ SỬA: Lấy từ Auth
+        Notification::where('user_id', $userId)->delete();
 
         return response()->json(['success' => true]);
     }

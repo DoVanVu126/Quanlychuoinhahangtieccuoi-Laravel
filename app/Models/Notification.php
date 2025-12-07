@@ -9,49 +9,50 @@ class Notification extends Model
 {
     use HasFactory;
 
-    // Các trường có thể mass assign
     protected $fillable = [
         'user_id',
         'booking_id',
         'promotion_id',
         'membership_id',
+        'support_ticket_id', // <--- THÊM DÒNG NÀY
         'title',
         'message',
         'type',
         'is_read',
     ];
 
-    // Giá trị mặc định
     protected $attributes = [
         'is_read' => false,
-        'type' => 'info', // nếu không có type thì mặc định info
+        'type' => 'info',
     ];
 
-    // Quan hệ với User
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
-    // Quan hệ với Booking
     public function booking()
     {
         return $this->belongsTo(Booking::class, 'booking_id', 'booking_id');
     }
 
-    // Quan hệ với Promotion
     public function promotion()
     {
         return $this->belongsTo(Promotion::class, 'promotion_id', 'promotion_id');
     }
 
-    // Quan hệ với Membership
     public function membership()
     {
         return $this->belongsTo(Membership::class, 'membership_id', 'membership_id');
     }
 
-    // Scope helper: chỉ lấy chưa đọc
+    // --- THÊM QUAN HỆ MỚI ---
+    public function supportTicket()
+    {
+        // Lưu ý: ticket_id là khóa chính của bảng support_tickets
+        return $this->belongsTo(SupportTicket::class, 'support_ticket_id', 'ticket_id');
+    }
+
     public function scopeUnread($query)
     {
         return $query->where('is_read', false);

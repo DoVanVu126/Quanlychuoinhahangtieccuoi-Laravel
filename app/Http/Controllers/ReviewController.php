@@ -99,11 +99,26 @@ class ReviewController extends Controller
 
     // DELETE /reviews/{id}
     public function destroy($id)
-    {
-        Review::where('review_id', $id)->delete();
-        return response()->json(['status' => true, 'message' => 'Xóa đánh giá thành công!']);
+{
+    // Kiểm tra xem bản ghi còn tồn tại không
+    $exists = Review::where('review_id', $id)->exists();
+
+    // Nếu không tồn tại => đã bị xóa ở tab khác
+    if (!$exists) {
+        return response()->json([
+            'status'  => false,
+            'message' => 'Xóa không hợp lệ! Đánh giá đã bị xóa trước đó.'
+        ], 404);
     }
 
+    // Giữ nguyên logic xóa của bạn
+    Review::where('review_id', $id)->delete();
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Xóa đánh giá thành công!'
+    ]);
+}
     // Chuyển đổi dữ liệu review
     private function transformReview($review)
     {
