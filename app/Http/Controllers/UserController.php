@@ -113,7 +113,7 @@ class UserController extends Controller
         if ($request->filled('updated_at')) {
             if ($request->updated_at !== $user->updated_at->toISOString()) {
                 return response()->json([
-                    'message' => 'Dữ liệu đã thay đổi, vui lòng tải lại trang trước khi cập nhật'
+                    'message' => 'Dữ liệu đã thay đổi, vui lòng tải lại trang trước khi cập nhậtt'
                 ], 409);
             }
         }
