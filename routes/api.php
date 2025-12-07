@@ -21,6 +21,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\SupportTicketController;
 
 
 use App\Http\Controllers\ReviewController;
@@ -37,6 +38,46 @@ use App\Http\Controllers\ReviewController;
 |
 */
 
+Route::middleware('auth:sanctum')->group(function () {
+
+    // ==========================================
+    // 🔔 QUẢN LÝ THÔNG BÁO (NOTIFICATIONS)
+    // ==========================================
+    
+    // Lấy danh sách (Frontend gọi: GET /api/notifications)
+    Route::get('/notifications', [NotificationController::class, 'index']);
+
+    // Đánh dấu 1 cái đã đọc
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markRead']);
+
+    // Đánh dấu tất cả đã đọc
+    Route::put('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+    // Xóa 1 thông báo
+    Route::delete('/notifications/{id}', [NotificationController::class, 'delete']);
+
+    // Xóa tất cả thông báo
+    Route::delete('/notifications/delete-all', [NotificationController::class, 'deleteAll']);
+
+
+    // ==========================================
+    // 🎫 QUẢN LÝ YÊU CẦU HỖ TRỢ (SUPPORT TICKETS)
+    // ==========================================
+
+    // 1. Khách hàng gửi yêu cầu mới (Frontend SupportCustomer.vue gọi)
+    Route::post('/support-tickets', [SupportTicketController::class, 'store']);
+
+    // 2. Admin lấy danh sách (Frontend SupportTickets.vue gọi)
+    Route::get('/support-tickets', [SupportTicketController::class, 'index']);
+
+    // 3. Admin cập nhật trạng thái nhanh (Dropdown status)
+    Route::put('/support-tickets/{id}', [SupportTicketController::class, 'update']);
+
+    // 4. Admin trả lời & Tạo thông báo (Frontend SupportTickets.vue gọi nút "Gửi phản hồi")
+    // ⚠️ QUAN TRỌNG: Đây là route còn thiếu của bạn
+    Route::post('/support-tickets/{id}/reply', [SupportTicketController::class, 'reply']);
+
+});
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
