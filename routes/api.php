@@ -22,6 +22,7 @@ use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\SupportTicketController;
+use App\Http\Controllers\DashboardController;
 
 
 use App\Http\Controllers\ReviewController;
@@ -59,7 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Xóa tất cả thông báo
     Route::delete('/notifications/delete-all', [NotificationController::class, 'deleteAll']);
 
-
+    //Lấy thống kê cho dashboard
+    Route::get('/dashboard/statistics', [DashboardController::class, 'getStatistics']);
     // ==========================================
     // 🎫 QUẢN LÝ YÊU CẦU HỖ TRỢ (SUPPORT TICKETS)
     // ==========================================
