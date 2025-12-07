@@ -18,7 +18,7 @@ class BookingsSeeder extends Seeder
 
         foreach ($customers as $customer) {
             // Mỗi khách hàng sẽ có 1–3 booking
-            $bookingCount = rand(1, 3);
+            $bookingCount = rand(1, 2);
 
             for ($i = 0; $i < $bookingCount; $i++) {
                 $eventDate = $faker->dateTimeBetween('now', '+1 month');
