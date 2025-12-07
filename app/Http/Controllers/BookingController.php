@@ -36,7 +36,7 @@ class BookingController extends Controller
         $bookings = $query->get();
 
         // map để thêm hall_name + price
-        $bookings = $bookings->map(function($b){
+        $bookings = $bookings->map(function ($b) {
             return [
                 'booking_id' => $b->booking_id,
                 'customer_id' => $b->customer_id,
@@ -60,146 +60,145 @@ class BookingController extends Controller
     }
 
     // Tạo booking mới
-   public function store(Request $request)
-{
-    $user = $request->user(); // Lấy user hiện tại
-    if (!$user) {
-        return response()->json(['message' => 'User chưa đăng nhập'], 401);
-    }
-
-    // Kiểm tra customer
-    $customer = Customer::firstOrCreate(['user_id' => $user->user_id]);
-
-    // Validate request
-    $request->validate([
-        'restaurant_id' => 'required|integer|exists:restaurants,restaurant_id',
-        'hall_id' => 'required|integer|exists:halls,hall_id',
-        'event_type' => 'required|string|max:255',
-        'event_time' => 'required|string|max:50',
-        'event_date' => 'required|date',
-        'return_date' => 'nullable|date',
-        'number_of_tables' => 'required|integer|min:1',
-        'status' => 'nullable|string|max:50',
-        'notes' => 'nullable|string',
-        'food_ids' => 'nullable|array',
-        'food_ids.*' => 'integer|exists:foods,food_id',
-        'service_ids' => 'nullable|array',
-        'service_ids.*' => 'integer|exists:services,service_id',
-    ]);
-
-    // Chuyển event_date sang định dạng date
-    try {
-        $eventDateOnly = Carbon::parse($request->event_date)->toDateString();
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'Ngày sự kiện không hợp lệ'], 422);
-    }
-
-    // Kiểm tra trùng lịch
-    $conflictExists = Booking::where('hall_id', $request->hall_id)
-        ->where('event_date', $eventDateOnly)
-        ->where('event_time', $request->event_time)
-        ->where('status', '!=', 'cancelled')
-        ->exists();
-
-    if ($conflictExists) {
-        return response()->json(['message' => 'Sảnh đã được đặt vào thời gian này'], 409);
-    }
-
-    // Tạo booking trong transaction
-    try {
-        $booking = DB::transaction(function () use ($request, $customer, $user) {
-            $booking = Booking::create([
-                'customer_id' => $customer->customer_id,
-                'created_by_user_id' => $user->user_id,
-                'restaurant_id' => $request->restaurant_id,
-                'hall_id' => $request->hall_id,
-                'event_type' => $request->event_type,
-                'event_time' => $request->event_time,
-                'event_date' => $request->event_date,
-                'return_date' => $request->return_date,
-                'number_of_tables' => $request->number_of_tables,
-                'price' => 0,
-                'status' => $request->status ?? 'pending',
-                'notes' => $request->notes,
-            ]);
-
-            // --- Xử lý food_ids ---
-            $foodIds = $request->input('food_ids', []);
-            if (is_string($foodIds)) {
-                $decoded = json_decode($foodIds, true);
-                if (json_last_error() === JSON_ERROR_NONE) $foodIds = $decoded;
-                else if (strpos($foodIds, ',') !== false) $foodIds = array_map('trim', explode(',', $foodIds));
-            }
-            $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds)) : [];
-            if ($foodIds) {
-                $rows = [];
-                foreach ($foodIds as $fid) {
-                    $rows[] = [
-                        'booking_id' => $booking->booking_id,
-                        'food_id' => (int)$fid,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-                DB::table('booking_foods')->insert($rows);
-            }
-
-            // --- Xử lý service_ids ---
-            $serviceIds = $request->input('service_ids', []);
-            if (is_string($serviceIds)) {
-                $decoded = json_decode($serviceIds, true);
-                if (json_last_error() === JSON_ERROR_NONE) $serviceIds = $decoded;
-                else if (strpos($serviceIds, ',') !== false) $serviceIds = array_map('trim', explode(',', $serviceIds));
-            }
-            $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds)) : [];
-            if ($serviceIds) {
-                $rows = [];
-                foreach ($serviceIds as $sid) {
-                    $rows[] = [
-                        'booking_id' => $booking->booking_id,
-                        'service_id' => (int)$sid,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-                DB::table('booking_services')->insert($rows);
-            }
-
-            // --- Tính tổng giá ---
-            $hallPrice = Hall::find($request->hall_id)->price ?? 0;
-            $totalFoodPrice = $foodIds ? Food::whereIn('food_id', $foodIds)->sum('price') : 0;
-            $totalServicePrice = $serviceIds ? Service::whereIn('service_id', $serviceIds)->sum('price') : 0;
-
-            $booking->price = $hallPrice + ($request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
-            $booking->save();
-
-            return $booking;
-        });
-
-        // --- Tạo notification ---
-        $notification = \App\Models\Notification::create([
-            'user_id' => $booking->created_by_user_id,
-            'booking_id' => $booking->booking_id,
-            'title' => 'Đặt tiệc thành công',
-            'message' => 'Đơn #' . $booking->booking_id . ' của bạn đã được tạo.',
-            'type' => 'success'
-        ]);
-        event(new \App\Events\NewNotificationEvent($notification));
-
-        // --- Gửi email ---
-        $userEmail = $user->email ?? null;
-        if ($userEmail) {
-            Mail::to($userEmail)->queue(new BookingCreatedMail($booking, $user));
+    public function store(Request $request)
+    {
+        $user = $request->user(); // Lấy user hiện tại
+        if (!$user) {
+            return response()->json(['message' => 'User chưa đăng nhập'], 401);
         }
 
-    } catch (\Exception $e) {
-        Log::error('Booking create failed: ' . $e->getMessage());
-        return response()->json(['message' => 'Tạo booking thất bại'], 500);
-    }
+        // Kiểm tra customer
+        $customer = Customer::firstOrCreate(['user_id' => $user->user_id]);
 
-    $booking->load('foods', 'services', 'hall');
-    return response()->json($booking, 201);
-}
+        // Validate request
+        $request->validate([
+            'restaurant_id' => 'required|integer|exists:restaurants,restaurant_id',
+            'hall_id' => 'required|integer|exists:halls,hall_id',
+            'event_type' => 'required|string|max:255',
+            'event_time' => 'required|string|max:50',
+            'event_date' => 'required|date',
+            'return_date' => 'nullable|date',
+            'number_of_tables' => 'required|integer|min:1',
+            'status' => 'nullable|string|max:50',
+            'notes' => 'nullable|string',
+            'food_ids' => 'nullable|array',
+            'food_ids.*' => 'integer|exists:foods,food_id',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'integer|exists:services,service_id',
+        ]);
+
+        // Chuyển event_date sang định dạng date
+        try {
+            $eventDateOnly = Carbon::parse($request->event_date)->toDateString();
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Ngày sự kiện không hợp lệ'], 422);
+        }
+
+        // Kiểm tra trùng lịch
+        $conflictExists = Booking::where('hall_id', $request->hall_id)
+            ->where('event_date', $eventDateOnly)
+            ->where('event_time', $request->event_time)
+            ->where('status', '!=', 'cancelled')
+            ->exists();
+
+        if ($conflictExists) {
+            return response()->json(['message' => 'Sảnh đã được đặt vào thời gian này'], 409);
+        }
+
+        // Tạo booking trong transaction
+        try {
+            $booking = DB::transaction(function () use ($request, $customer, $user) {
+                $booking = Booking::create([
+                    'customer_id' => $customer->customer_id,
+                    'created_by_user_id' => $user->user_id,
+                    'restaurant_id' => $request->restaurant_id,
+                    'hall_id' => $request->hall_id,
+                    'event_type' => $request->event_type,
+                    'event_time' => $request->event_time,
+                    'event_date' => $request->event_date,
+                    'return_date' => $request->return_date,
+                    'number_of_tables' => $request->number_of_tables,
+                    'price' => 0,
+                    'status' => $request->status ?? 'pending',
+                    'notes' => $request->notes,
+                ]);
+
+                // --- Xử lý food_ids ---
+                $foodIds = $request->input('food_ids', []);
+                if (is_string($foodIds)) {
+                    $decoded = json_decode($foodIds, true);
+                    if (json_last_error() === JSON_ERROR_NONE) $foodIds = $decoded;
+                    else if (strpos($foodIds, ',') !== false) $foodIds = array_map('trim', explode(',', $foodIds));
+                }
+                $foodIds = is_array($foodIds) ? array_values(array_filter($foodIds)) : [];
+                if ($foodIds) {
+                    $rows = [];
+                    foreach ($foodIds as $fid) {
+                        $rows[] = [
+                            'booking_id' => $booking->booking_id,
+                            'food_id' => (int)$fid,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                    DB::table('booking_foods')->insert($rows);
+                }
+
+                // --- Xử lý service_ids ---
+                $serviceIds = $request->input('service_ids', []);
+                if (is_string($serviceIds)) {
+                    $decoded = json_decode($serviceIds, true);
+                    if (json_last_error() === JSON_ERROR_NONE) $serviceIds = $decoded;
+                    else if (strpos($serviceIds, ',') !== false) $serviceIds = array_map('trim', explode(',', $serviceIds));
+                }
+                $serviceIds = is_array($serviceIds) ? array_values(array_filter($serviceIds)) : [];
+                if ($serviceIds) {
+                    $rows = [];
+                    foreach ($serviceIds as $sid) {
+                        $rows[] = [
+                            'booking_id' => $booking->booking_id,
+                            'service_id' => (int)$sid,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                    DB::table('booking_services')->insert($rows);
+                }
+
+                // --- Tính tổng giá ---
+                $hallPrice = Hall::find($request->hall_id)->price ?? 0;
+                $totalFoodPrice = $foodIds ? Food::whereIn('food_id', $foodIds)->sum('price') : 0;
+                $totalServicePrice = $serviceIds ? Service::whereIn('service_id', $serviceIds)->sum('price') : 0;
+
+                $booking->price = $hallPrice + ($request->number_of_tables * $totalFoodPrice) + $totalServicePrice;
+                $booking->save();
+
+                return $booking;
+            });
+
+            // --- Tạo notification ---
+            $notification = \App\Models\Notification::create([
+                'user_id' => $booking->created_by_user_id,
+                'booking_id' => $booking->booking_id,
+                'title' => 'Đặt tiệc thành công',
+                'message' => 'Đơn #' . $booking->booking_id . ' của bạn đã được tạo.',
+                'type' => 'success'
+            ]);
+            event(new \App\Events\NewNotificationEvent($notification));
+
+            // --- Gửi email ---
+            $userEmail = $user->email ?? null;
+            if ($userEmail) {
+                Mail::to($userEmail)->queue(new BookingCreatedMail($booking, $user));
+            }
+        } catch (\Exception $e) {
+            Log::error('Booking create failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Tạo booking thất bại'], 500);
+        }
+
+        $booking->load('foods', 'services', 'hall');
+        return response()->json($booking, 201);
+    }
 
 
     // Lấy chi tiết booking
@@ -244,10 +243,34 @@ class BookingController extends Controller
         ]);
 
         $booking = Booking::findOrFail($id);
-        $booking->update($request->all());
+
+        // ✅ CHỈ UPDATE NHỮNG FIELD ĐƯỢC PHÉP
+        $booking->fill($request->only([
+            'customer_id',
+            'created_by_user_id',
+            'restaurant_id',
+            'hall_id',
+            'event_type',
+            'event_time',
+            'event_date',
+            'return_date',
+            'number_of_tables',
+            'price',
+            'status',
+            'notes',
+        ]));
+
+        // ✅ ÉP CẬP NHẬT updated_at
+        $booking->touch();   // cực kỳ quan trọng
+
+        $booking->save();
+
+        // ✅ REFRESH LẠI DỮ LIỆU MỚI NHẤT TỪ DB
+        $booking->refresh();
 
         return response()->json($booking);
     }
+
 
     // Xóa booking
     public function destroy($id)
