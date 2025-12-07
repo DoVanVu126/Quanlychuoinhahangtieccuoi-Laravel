@@ -19,43 +19,43 @@ class ReviewController extends Controller
     }
 
     // GET /reviews hoặc /reviews/{restaurantId}
-   public function index(Request $request, $restaurantId = null)
-{
-    $query = Review::with(['user:user_id,username,image_url', 'restaurant:restaurant_id,name']);
+    public function index(Request $request, $restaurantId = null)
+    {
+        $query = Review::with(['user:user_id,username,image_url', 'restaurant:restaurant_id,name']);
 
-    // lọc theo nhà hàng (frontend)
-    if ($restaurantId) {
-        $query->where('restaurant_id', $restaurantId);
+        // lọc theo nhà hàng (frontend)
+        if ($restaurantId) {
+            $query->where('restaurant_id', $restaurantId);
+        }
+
+        // lọc theo user hoặc keyword (admin)
+        if ($request->has('user_id')) $query->where('user_id', $request->user_id);
+        if ($request->has('keyword')) $query->where('comment', 'like', "%{$request->keyword}%");
+
+        // phân trang
+        $perPage = $request->get('per_page', 10); // default 10
+        $reviews = $query->orderBy('review_id', 'DESC')->paginate($perPage);
+
+        // chỉnh dữ liệu trả về
+        $reviews->getCollection()->transform(function ($review) {
+            return [
+                'review_id' => $review->review_id,
+                'restaurant_id' => $review->restaurant_id,
+                'restaurant_name' => $review->restaurant->name ?? 'Nhà hàng',
+                'user_id' => $review->user_id,
+                'user_name' => $review->user->username ?? 'Người dùng',
+                'avatar' => $review->user && $review->user->image_url
+                    ? asset($review->user->image_url)
+                    : asset('img/default-avatar.png'),
+                'star_rating' => $review->star_rating,
+                'comment' => $this->censor($review->comment),
+                'created_at' => $review->created_at,
+                'updated_at' => $review->updated_at,
+            ];
+        });
+
+        return response()->json($reviews);
     }
-
-    // lọc theo user hoặc keyword (admin)
-    if ($request->has('user_id')) $query->where('user_id', $request->user_id);
-    if ($request->has('keyword')) $query->where('comment', 'like', "%{$request->keyword}%");
-
-    // phân trang
-    $perPage = $request->get('per_page', 10); // default 10
-    $reviews = $query->orderBy('review_id', 'DESC')->paginate($perPage);
-
-    // chỉnh dữ liệu trả về
-    $reviews->getCollection()->transform(function ($review) {
-        return [
-            'review_id' => $review->review_id,
-            'restaurant_id' => $review->restaurant_id,
-            'restaurant_name' => $review->restaurant->name ?? 'Nhà hàng',
-            'user_id' => $review->user_id,
-            'user_name' => $review->user->username ?? 'Người dùng',
-            'avatar' => $review->user && $review->user->image_url
-                ? asset($review->user->image_url)
-                : asset('img/default-avatar.png'),
-            'star_rating' => $review->star_rating,
-            'comment' => $this->censor($review->comment),
-            'created_at' => $review->created_at,
-            'updated_at' => $review->updated_at,
-        ];
-    });
-
-    return response()->json($reviews);
-}
     // POST /reviews
     public function store(Request $request)
     {
@@ -99,26 +99,26 @@ class ReviewController extends Controller
 
     // DELETE /reviews/{id}
     public function destroy($id)
-{
-    // Kiểm tra xem bản ghi còn tồn tại không
-    $exists = Review::where('review_id', $id)->exists();
+    {
+        // Kiểm tra xem bản ghi còn tồn tại không
+        $exists = Review::where('review_id', $id)->exists();
 
-    // Nếu không tồn tại => đã bị xóa ở tab khác
-    if (!$exists) {
+        // Nếu không tồn tại => đã bị xóa ở tab khác
+        if (!$exists) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Xóa không hợp lệ! Đánh giá đã bị xóa trước đó.'
+            ], 404);
+        }
+
+        // Giữ nguyên logic xóa của bạn
+        Review::where('review_id', $id)->delete();
+
         return response()->json([
-            'status'  => false,
-            'message' => 'Xóa không hợp lệ! Đánh giá đã bị xóa trước đó.'
-        ], 404);
+            'status' => true,
+            'message' => 'Xóa đánh giá thành công!'
+        ]);
     }
-
-    // Giữ nguyên logic xóa của bạn
-    Review::where('review_id', $id)->delete();
-
-    return response()->json([
-        'status' => true,
-        'message' => 'Xóa đánh giá thành công!'
-    ]);
-}
     // Chuyển đổi dữ liệu review
     private function transformReview($review)
     {
