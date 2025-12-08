@@ -20,6 +20,10 @@ use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CustomerController;
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -49,10 +53,43 @@ Route::prefix('password-reset')->group(function () {
     Route::post('/reset', [PasswordResetController::class, 'resetPassword']);
 });
 
+
 Route::get('/users', [UserController::class, 'index']);
 Route::post('/users', [UserController::class, 'store']);
 Route::put('/users/{id}', [UserController::class, 'update']);
 Route::delete('/users/{id}', [UserController::class, 'destroy']);
+
+// Hồ sơ người dùng
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::delete('/profile', [ProfileController::class, 'destroy']);
+    //Upload avatar
+    Route::post('/users/{id}/avatar', [ProfileController::class, 'uploadAvatar']);
+    // Lấy thông tin (GET)
+    Route::get('/users/{id}', [ProfileController::class, 'show']); 
+    
+    // Cập nhật thông tin (PUT) -> Đây là cái bạn đang lỗi
+    Route::put('/users/{id}', [ProfileController::class, 'update']);
+    
+    // Xóa tài khoản (DELETE)
+    Route::delete('/users/{id}', [ProfileController::class, 'destroy']);
+    
+    // Upload avatar (POST)
+    Route::post('/users/{id}', [ProfileController::class, 'updateAvatar']); // Nếu bạn có hàm updateAvatar riêng
+    Route::put('/changePassword', [ProfileController::class, 'changePassword']);
+    
+});
+Route::get('/booking-history', [BookingController::class, 'BookingbyUser']);
+Route::get('/bookings/{id}', [BookingController::class, 'show']);
+
+// Customer routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/customers', [CustomerController::class, 'index']); // Lấy danh sách
+    Route::get('/customers/{id}/details', [CustomerController::class, 'showDetails']); // Lấy chi tiết (Booking + Payment)
+});
+
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/users/export/pdf', [UserController::class, 'exportPDF'])->name('users.export.pdf');
 
