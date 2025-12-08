@@ -17,6 +17,9 @@ use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
 use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PasswordResetController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,13 +31,24 @@ use App\Http\Controllers\MembershipController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-Route::post('/login', [UserController::class, 'login']);
+
+
 
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+// Đặt lại mật khẩu
+Route::prefix('password-reset')->group(function () {
+    Route::post('/send-otp', [PasswordResetController::class, 'sendOtp']);
+    Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp']);
+    Route::post('/reset', [PasswordResetController::class, 'resetPassword']);
+});
+
 Route::get('/users', [UserController::class, 'index']);
 Route::post('/users', [UserController::class, 'store']);
 Route::put('/users/{id}', [UserController::class, 'update']);
@@ -184,3 +198,12 @@ Route::get('/membership/{user_id}', [MembershipController::class, 'show'])->name
 
 // Cập nhật membership sau booking confirmed
 Route::post('/membership/booking/{booking_id}', [MembershipController::class, 'updateAfterBooking'])->name('membership.updateAfterBooking');
+
+//đánh giá
+Route::get('/reviews/{restaurantId}', [ReviewController::class, 'index']);
+
+// Admin review
+Route::get('/reviews', [ReviewController::class, 'index']); // paginate + filter
+Route::post('/reviews', [ReviewController::class, 'store']);
+Route::put('/reviews/{id}', [ReviewController::class, 'update']);
+Route::delete('/reviews/{id}', [ReviewController::class, 'destroy']);

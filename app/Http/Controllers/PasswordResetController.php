@@ -22,7 +22,7 @@ class PasswordResetController extends Controller
         if ($validator->fails()) return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
 
         $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        
+
         // Xóa cũ, thêm mới vào bảng OTPS
         DB::table('password_reset_otps')->where('email', $request->email)->delete();
         DB::table('password_reset_otps')->insert([
@@ -57,19 +57,19 @@ class PasswordResetController extends Controller
         if (!$record || !Hash::check($request->otp_code, $record->otp_code)) {
             return response()->json(['success' => false, 'message' => 'Mã OTP không chính xác.'], 401);
         }
-        
+
         return response()->json(['success' => true, 'message' => 'OTP hợp lệ', 'reset_token' => $request->otp_code], 200);
     }
 
 
     //Đặt lại mật khẩu
-    
+
     public function resetPassword(Request $request)
     {
         // 1. Sửa tên tham số thành 'otp_code' cho khớp Frontend
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
-            'otp_code' => 'required|string|size:6', 
+            'otp_code' => 'required|string|size:6',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
