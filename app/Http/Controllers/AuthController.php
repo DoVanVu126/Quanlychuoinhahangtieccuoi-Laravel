@@ -58,16 +58,16 @@ class AuthController extends Controller
             'username.max' => 'Tên tài khoản không được vượt quá 50 ký tự',
             'username.unique' => 'Tên tài khoản đã tồn tại trong hệ thống',
             'username.regex' => 'Tên tài khoản chỉ được chứa chữ cái, số và dấu gạch dưới',
-            
+
             'email.required' => 'Email là bắt buộc',
             'email.email' => 'Email không đúng định dạng',
             'email.max' => 'Email không được vượt quá 255 ký tự',
             'email.unique' => 'Email đã được đăng ký',
-            
+
             'phone.required' => 'Số điện thoại là bắt buộc',
             'phone.regex' => 'Số điện thoại chỉ được chứa số (9-11 ký tự)',
             'phone.unique' => 'Số điện thoại đã được đăng ký',
-            
+
             'password.required' => 'Mật khẩu là bắt buộc',
             'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự',
             'password.max' => 'Mật khẩu không được vượt quá 255 ký tự',
@@ -109,7 +109,7 @@ class AuthController extends Controller
             // Nếu không có, comment dòng này lại
             try {
                 Customer::create([
-                    'user_id' => $user->user_id 
+                    'user_id' => $user->user_id
                 ]);
             } catch (\Exception $e) {
                 // Nếu không có bảng customers, bỏ qua
