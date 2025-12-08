@@ -17,14 +17,9 @@ use App\Http\Controllers\FoodTypeController;
 use App\Http\Controllers\SuggestionPackageController;
 use App\Http\Controllers\UserPromotionController;
 use App\Http\Controllers\MembershipController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\CustomerController;
-
-
-use App\Http\Controllers\ReviewController;
-
 
 /*
 |--------------------------------------------------------------------------
@@ -38,19 +33,15 @@ use App\Http\Controllers\ReviewController;
 */
 
 
+
+
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-Route::get('/users', [UserController::class, 'index']);
-Route::post('/users', [UserController::class, 'store']);
-Route::put('/users/{id}', [UserController::class, 'update']);
-Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
-
-// Xác thực người dùng 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-
 // Đặt lại mật khẩu
 Route::prefix('password-reset')->group(function () {
     Route::post('/send-otp', [PasswordResetController::class, 'sendOtp']);
@@ -58,21 +49,10 @@ Route::prefix('password-reset')->group(function () {
     Route::post('/reset', [PasswordResetController::class, 'resetPassword']);
 });
 
-// Hồ sơ người dùng
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'show']);
-    Route::put('/profile', [ProfileController::class, 'update']);
-    Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
-    Route::delete('/profile', [ProfileController::class, 'destroy']);
-    Route::put('/changePassword', [ProfileController::class, 'changePassword']);
-});
-
-// Customer routes
-Route::get('/customers', [CustomerController::class, 'index']);
-Route::get('/customers/{id}', [CustomerController::class, 'show']);
-// Route lấy chi tiết khách hàng
-Route::get('/customers/{id}/details', [CustomerController::class, 'getDetails']);
-
+Route::get('/users', [UserController::class, 'index']);
+Route::post('/users', [UserController::class, 'store']);
+Route::put('/users/{id}', [UserController::class, 'update']);
+Route::delete('/users/{id}', [UserController::class, 'destroy']);
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/users/export/pdf', [UserController::class, 'exportPDF'])->name('users.export.pdf');
 
@@ -121,6 +101,7 @@ Route::get('/restaurants/ward', function (Request $request) {
 });
 
 //Nhà hàng
+Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
 Route::get('/restaurants/paginated', [RestaurantController::class, 'paginated']); // đặt trước {id}
 Route::get('/restaurants/search', [RestaurantController::class, 'search']);       // đặt trước {id}
 Route::get('/restaurants', [RestaurantController::class, 'index']);               // lấy tất cả
@@ -129,9 +110,6 @@ Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);         
 Route::post('/restaurants', [RestaurantController::class, 'store']);
 Route::put('/restaurants/{id}', [RestaurantController::class, 'update']);
 Route::delete('/restaurants/{id}', [RestaurantController::class, 'destroy']);
-
-Route::get('/top-restaurants', [RestaurantController::class, 'topRestaurants']);
-
 
 // 🏛️ Sảnh tiệc (Hall)
 Route::get('/halls', [HallController::class, 'index']);
@@ -146,7 +124,16 @@ Route::get('/restaurants/{id}/halls', [HallController::class, 'getHallsByRestaur
 Route::get('/suggestion-packages', [SuggestionPackageController::class, 'index']);
 Route::get('/suggestion-packages/{id}', [SuggestionPackageController::class, 'show']);
 Route::get('/restaurants/{id}/suggestion-packages', [SuggestionPackageController::class, 'byRestaurant']);
+Route::post('/suggestion-packages', [SuggestionPackageController::class, 'store']);
+Route::put('/suggestion-packages/{id}', [SuggestionPackageController::class, 'update']);
+Route::delete('/suggestion-packages/{id}', [SuggestionPackageController::class, 'destroy']);
 
+// Convenience endpoints to add/remove single food/service
+Route::post('/suggestion-packages/{id}/foods', [SuggestionPackageController::class, 'addFood']);
+Route::delete('/suggestion-packages/{id}/foods/{foodId}', [SuggestionPackageController::class, 'removeFood']);
+
+Route::post('/suggestion-packages/{id}/services', [SuggestionPackageController::class, 'addService']);
+Route::delete('/suggestion-packages/{id}/services/{serviceId}', [SuggestionPackageController::class, 'removeService']);
 // 📦 Kho hàng (Inventory)
 Route::get('/inventories', [InventoryController::class, 'index']);
 Route::get('/inventories/low-stock', [InventoryController::class, 'lowStock']);
@@ -212,9 +199,7 @@ Route::get('/membership/{user_id}', [MembershipController::class, 'show'])->name
 // Cập nhật membership sau booking confirmed
 Route::post('/membership/booking/{booking_id}', [MembershipController::class, 'updateAfterBooking'])->name('membership.updateAfterBooking');
 
-
-// đánh giá
-// API chi tiết nhà hàng (frontend)
+//đánh giá
 Route::get('/reviews/{restaurantId}', [ReviewController::class, 'index']);
 
 // Admin review
