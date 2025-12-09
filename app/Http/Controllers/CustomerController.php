@@ -100,19 +100,19 @@ class CustomerController extends Controller
             return [
                 'id'           => $b->booking_id,
                 'event_type'   => $b->event_type,
-                'event_date'   => $b->event_date, 
+                'event_date'   => $b->event_date,
                 'hall_name'    => $b->hall ? $b->hall->name : 'Chưa chọn sảnh',
                 'status'       => $b->status,
-                
+
                 // Mapping quan trọng: DB là 'price', Vue đang gọi là 'total_amount'
-                'total_amount' => $b->price, 
+                'total_amount' => $b->price,
             ];
         });
 
         // 4. Lấy danh sách Payments
         // Tìm tất cả payment thuộc các booking của khách này
         $bookingIds = $bookingsData->pluck('booking_id');
-        
+
         $payments = Payment::whereIn('booking_id', $bookingIds)
             ->orderBy('payment_date', 'desc')
             ->get()
@@ -121,10 +121,10 @@ class CustomerController extends Controller
                     'id'               => $p->payment_id,
                     'booking_id'       => $p->booking_id,
                     'transaction_code' => $p->transaction_code,
-                    
+
                     // Mapping quan trọng: DB là 'total_amount', Vue đang gọi là 'amount'
-                    'amount'           => $p->total_amount, 
-                    
+                    'amount'           => $p->total_amount,
+
                     'payment_method'   => $p->payment_method,
                     'payment_date'     => $p->payment_date,
                     'status'           => $p->payment_status // paid/unpaid/partial

@@ -20,7 +20,7 @@ use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
-
+use App\Http\Controllers\CustomerController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -47,6 +47,11 @@ Route::prefix('password-reset')->group(function () {
     Route::post('/send-otp', [PasswordResetController::class, 'sendOtp']);
     Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp']);
     Route::post('/reset', [PasswordResetController::class, 'resetPassword']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/customers', [CustomerController::class, 'index']); // Lấy danh sách
+    Route::get('/customers/{id}/details', [CustomerController::class, 'showDetails']); // Lấy chi tiết (Booking + Payment)
 });
 
 Route::get('/users', [UserController::class, 'index']);
