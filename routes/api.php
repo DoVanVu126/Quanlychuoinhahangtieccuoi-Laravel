@@ -20,6 +20,8 @@ use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CustomerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,6 +57,30 @@ Route::put('/users/{id}', [UserController::class, 'update']);
 Route::delete('/users/{id}', [UserController::class, 'destroy']);
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/users/export/pdf', [UserController::class, 'exportPDF'])->name('users.export.pdf');
+
+// Hồ sơ người dùng
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::delete('/profile', [ProfileController::class, 'destroy']);
+    //Upload avatar
+    Route::post('/users/{id}/avatar', [ProfileController::class, 'uploadAvatar']);
+    // Lấy thông tin (GET)
+    Route::get('/users/{id}', [ProfileController::class, 'show']);
+
+    // Cập nhật thông tin (PUT) -> Đây là cái bạn đang lỗi
+    Route::put('/users/{id}', [ProfileController::class, 'update']);
+
+    // Xóa tài khoản (DELETE)
+    Route::delete('/users/{id}', [ProfileController::class, 'destroy']);
+
+    // Upload avatar (POST)
+    Route::post('/users/{id}', [ProfileController::class, 'updateAvatar']); // Nếu bạn có hàm updateAvatar riêng
+    Route::put('/changePassword', [ProfileController::class, 'changePassword']);
+
+});
+
 
 // danh sách dịch vụ
 Route::get('/services', [ServiceController::class, 'index']);
