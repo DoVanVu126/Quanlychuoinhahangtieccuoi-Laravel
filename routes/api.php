@@ -21,6 +21,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\CustomerController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -60,6 +61,7 @@ Route::put('/users/{id}', [UserController::class, 'update']);
 Route::delete('/users/{id}', [UserController::class, 'destroy']);
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/users/export/pdf', [UserController::class, 'exportPDF'])->name('users.export.pdf');
+
 
 // danh sách dịch vụ
 Route::get('/services', [ServiceController::class, 'index']);
