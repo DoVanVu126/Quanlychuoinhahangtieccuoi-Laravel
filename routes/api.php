@@ -51,6 +51,12 @@ Route::prefix('password-reset')->group(function () {
     Route::post('/reset', [PasswordResetController::class, 'resetPassword']);
 });
 
+// Customer routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/customers', [CustomerController::class, 'index']); // Lấy danh sách
+    Route::get('/customers/{id}/details', [CustomerController::class, 'showDetails']); // Lấy chi tiết (Booking + Payment)
+});
+
 Route::get('/users', [UserController::class, 'index']);
 Route::post('/users', [UserController::class, 'store']);
 Route::put('/users/{id}', [UserController::class, 'update']);
