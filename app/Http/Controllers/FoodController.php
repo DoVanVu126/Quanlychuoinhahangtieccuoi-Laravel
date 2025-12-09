@@ -204,6 +204,12 @@ class FoodController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        if (strtotime($request->updated_at) !== strtotime($food->updated_at)) {
+    return response()->json([
+        'message' => '⚠ Món ăn đã được chỉnh sửa ở nơi khác. Vui lòng tải lại trang trước khi cập nhật.'
+    ], 409);
+}
+
         // kiểm tra HTML trong các trường text
         $textFields = ['name', 'unit', 'description'];
         foreach ($textFields as $f) {
