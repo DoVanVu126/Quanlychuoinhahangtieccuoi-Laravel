@@ -35,7 +35,7 @@ use App\Http\Controllers\CustomerController;
 
 
 
-
+Route::get('/booking-history', [BookingController::class, 'BookingbyUser']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
